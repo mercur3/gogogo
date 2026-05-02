@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
-	"goweb/middleware"
-	"goweb/otel"
+	"goweb/internal/db"
+	"goweb/internal/handle"
+	"goweb/internal/otel"
+	"goweb/internal/repository"
+	"goweb/internal/service"
 	"log"
 	"log/slog"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,13 +27,22 @@ func main() {
 	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	pool, err := db.InitPool(sigCtx, "exam-user", "exam-password", "exam-db", "5432")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+
 	otelClosers, err := otel.InitOtel(sigCtx)
 	defer closeOtel(sigCtx, otelClosers)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	srv := makeServer()
+	repositories := repository.New(pool)
+	author := service.Author{R: &repositories}
+
+	srv := handle.MakeServer(author)
 	go func() {
 		slog.Info("Server starting")
 
@@ -39,6 +51,12 @@ func main() {
 			slog.Info("Server is closing")
 		} else if err != nil {
 			slog.Error("Server error", slog.Any("error", err))
+		}
+	}()
+	go func() {
+		log.Println("pprof listening on localhost:6060")
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			log.Println("pprof server error:", err)
 		}
 	}()
 
@@ -67,68 +85,15 @@ func main() {
 		closeOtel(ctx, otelClosers)
 	})
 
+	// close db
+	wg.Go(func() {
+		slog.Info("Closing the DB")
+		pool.Close()
+	})
+
 	wg.Wait()
 
 	slog.Info("everything was closed")
-}
-
-func makeServer() *http.Server {
-	v1 := http.NewServeMux()
-	v1.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		writeBody(w, "GET /v1/test")
-	})
-	v1.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusAccepted)
-		writeBody(w, "POST /v1/test")
-	})
-	v1.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
-		val := r.PathValue("id")
-		if val != "" {
-			w.WriteHeader(http.StatusOK)
-			writeBody(w, fmt.Sprintf("GET /v1/test/{%s}", val))
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	})
-
-	v2 := http.NewServeMux()
-	v2.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		writeBody(w, "GET /v2/test")
-	})
-	v2.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusAccepted)
-		writeBody(w, "POST /v2/test")
-	})
-	v2.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
-		val := r.PathValue("id")
-		if val != "" {
-			w.WriteHeader(http.StatusOK)
-			writeBody(w, fmt.Sprintf("GET /v2/test/{%s}", val))
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-		}
-	})
-
-	mux := http.NewServeMux()
-	mux.Handle("/v1/", middleware.DeprecatedEndpoint(http.StripPrefix("/v1", v1)))
-	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
-
-	return &http.Server{
-		Addr:         ":8080",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-		Handler:      middleware.TimedRequest(mux),
-	}
-}
-
-func writeBody(w http.ResponseWriter, s string) {
-	_, err := w.Write([]byte(s))
-	if err != nil {
-		slog.Error("failed to write body", slog.Any("error", err))
-	}
 }
 
 func closeOtel(ctx context.Context, c otel.Closers) {

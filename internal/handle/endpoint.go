@@ -1,0 +1,74 @@
+package handle
+
+import (
+	"fmt"
+	"goweb/internal/middleware"
+	"goweb/internal/otel"
+	"goweb/internal/service"
+	"net/http"
+	"strconv"
+	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+)
+
+func MakeServer(author service.Author) *http.Server {
+	v1 := http.NewServeMux()
+	v1.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+		writeBody(w, http.StatusOK, "GET /v1/test")
+	})
+	v1.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
+		writeBody(w, http.StatusAccepted, "POST /v1/test")
+	})
+	v1.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
+		val := r.PathValue("id")
+		if val != "" {
+			writeBody(w, http.StatusOK, fmt.Sprintf("GET /v1/test/{%s}", val))
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	})
+
+	v2 := http.NewServeMux()
+	v2.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+		a, err := author.GetAll(r.Context())
+		if err != nil {
+			setError(w, err)
+		} else {
+			writeBody(w, http.StatusOK, a)
+		}
+	})
+	v2.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
+		writeBody(w, http.StatusAccepted, "POST /v2/test")
+	})
+	v2.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
+		tracer := otel.Tracer()
+		ctx, span := tracer.Start(r.Context(), "GET /test/{id}")
+		defer span.End()
+
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err == nil {
+			a, err := author.Get(ctx, int64(id))
+			if err != nil {
+				setError(w, err)
+			} else {
+				writeBody(w, http.StatusOK, a)
+			}
+		} else {
+			span.SetAttributes(attribute.String("error", err.Error()))
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/v1/", middleware.DeprecatedEndpoint(http.StripPrefix("/v1", v1)))
+	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
+
+	return &http.Server{
+		Addr:         ":8080",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+		Handler:      middleware.TraceRequest(mux),
+	}
+}

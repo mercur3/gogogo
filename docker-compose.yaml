@@ -21,3 +21,12 @@ services:
     image: jaegertracing/all-in-one:1.60
     ports:
       - 16686:16686
+
+  postgres:
+    image: docker.io/postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: exam-password
+      POSTGRES_USER: exam-user
+      POSTGRES_DB: exam-db
+    ports:
+      - "5432:5432"
