@@ -14,18 +14,16 @@ import (
 
 func MakeServer(author service.Author) *http.Server {
 	v1 := http.NewServeMux()
-	v1.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
-		writeBody(w, http.StatusOK, "GET /v1/test")
-	})
+	v1.HandleFunc("GET /test", getAllHandler)
 	v1.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
 		writeBody(w, http.StatusAccepted, "POST /v1/test")
 	})
 	v1.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
-		val := r.PathValue("id")
-		if val != "" {
-			writeBody(w, http.StatusOK, fmt.Sprintf("GET /v1/test/{%s}", val))
-		} else {
+		val, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			writeBody(w, http.StatusOK, fmt.Sprintf("GET /v1/test/{%d}", val))
 		}
 	})
 
@@ -77,4 +75,8 @@ func MakeServer(author service.Author) *http.Server {
 		IdleTimeout:  60 * time.Second,
 		Handler:      middleware.TraceRequest(mux),
 	}
+}
+
+func getAllHandler(w http.ResponseWriter, r *http.Request) {
+	writeBody(w, http.StatusOK, "GET /v1/test")
 }
