@@ -12,8 +12,8 @@ clean:
 	rm $(SQLC_GENERATED_FILES) $(SQLC_SENTINEL)
 
 .PHONY: test
-test: $(SQLC_SENTINEL)
+test:
 	go test -v -race -shuffle=on ./...
 
-run: $(SQLC_SENTINEL)
+run:
 	go run ./...
