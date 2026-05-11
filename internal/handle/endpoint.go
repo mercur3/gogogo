@@ -63,6 +63,12 @@ func MakeServer(author service.Author) *http.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/v1/", middleware.DeprecatedEndpoint(http.StripPrefix("/v1", v1)))
 	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeBody(w, http.StatusOK, map[string]string{"status": "alive"})
+	})
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		writeBody(w, http.StatusOK, map[string]string{"status": "ready"})
+	})
 
 	return &http.Server{
 		Addr:         ":8080",
