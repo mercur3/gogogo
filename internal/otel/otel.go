@@ -67,7 +67,10 @@ func initConn() (*grpc.ClientConn, error) {
 	otelCollector := "localhost:4317"
 
 	slog.Debug("connecting to otel collector", slog.String("addr", otelCollector))
-	conn, err := grpc.NewClient(otelCollector, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(
+		otelCollector,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish a connections to %s: %w", otelCollector, err)
 	}
@@ -75,7 +78,11 @@ func initConn() (*grpc.ClientConn, error) {
 	return conn, err
 }
 
-func initTracerProvider(ctx context.Context, res *resource.Resource, conn *grpc.ClientConn) (OtelCloser, error) {
+func initTracerProvider(
+	ctx context.Context,
+	res *resource.Resource,
+	conn *grpc.ClientConn,
+) (OtelCloser, error) {
 	slog.Debug("setting up trace exporter")
 
 	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
@@ -95,7 +102,11 @@ func initTracerProvider(ctx context.Context, res *resource.Resource, conn *grpc.
 	return traceExporter.Shutdown, nil
 }
 
-func initMeterProvider(ctx context.Context, res *resource.Resource, conn *grpc.ClientConn) (OtelCloser, error) {
+func initMeterProvider(
+	ctx context.Context,
+	res *resource.Resource,
+	conn *grpc.ClientConn,
+) (OtelCloser, error) {
 	slog.Debug("setting up metric exporter")
 
 	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))

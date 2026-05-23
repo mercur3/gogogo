@@ -6,7 +6,6 @@ import (
 	"goweb/internal/service"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,10 +14,7 @@ func TestCreate(t *testing.T) {
 
 	author := db.CreateAuthorParams{
 		Name: "test",
-		Bio: pgtype.Text{
-			String: "bio",
-			Valid:  true,
-		},
+		Bio:  new("bio"),
 	}
 
 	repo := repository.New(pgPool)

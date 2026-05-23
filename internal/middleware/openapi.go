@@ -44,7 +44,7 @@ func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.Str
 	}
 }
 
-func MaxRequestBody(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
+func MaxRequestBodyMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 

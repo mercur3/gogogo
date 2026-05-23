@@ -9,7 +9,10 @@ type AuthorRepo struct {
 	q *db.Queries
 }
 
-func (a *AuthorRepo) CreateAuthor(ctx context.Context, arg db.CreateAuthorParams) (db.Author, error) {
+func (a *AuthorRepo) CreateAuthor(
+	ctx context.Context,
+	arg db.CreateAuthorParams,
+) (db.Author, error) {
 	return a.q.CreateAuthor(ctx, arg)
 }
 

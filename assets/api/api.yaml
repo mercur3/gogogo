@@ -1,27 +1,100 @@
 openapi: "3.0.0"
 info:
   version: 1.0.0
-  title: Minimal ping API server
+  title: Minimal API server
 paths:
-  /ping:
+  /author:
     get:
-      summary: Get ping
-      operationId: GetPing
+      summary: Get all authors
+      operationId: GetAllAuthors
       responses:
         "200":
-          description: pet response
+          description: ok
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Pong"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Author"
+    post:
+      summary: create author
+      operationId: CreateAuthor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorCreateRequest"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Author"
+        "400":
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+  /author/{id}:
+    get:
+      summary: Get author
+      operationId: GetAuthor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Author"
+        "404":
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
 components:
   schemas:
     # base types
-    Pong:
+    Author:
       type: object
       required:
-        - ping
+        - id
+        - name
       properties:
-        ping:
+        id:
+          type: integer
+          format: int64
+        name:
           type: string
-          example: pong
+        bio:
+          type: string
+    ErrorMsg:
+      type: object
+      required:
+        - msg
+        - requestId
+      properties:
+        msg:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+    AuthorCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        bio:
+          type: string

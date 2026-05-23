@@ -6,6 +6,7 @@ generate:
   models: true
   std-http-server: true
   strict-server: true
+  embedded-spec: true # needed for validation middleware
 output-options:
   skip-fmt: false
   skip-prune: false

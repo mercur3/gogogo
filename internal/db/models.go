@@ -9,9 +9,9 @@ import (
 )
 
 type Author struct {
-	ID   int64       `json:"id"`
-	Name string      `json:"name"`
-	Bio  pgtype.Text `json:"bio"`
+	ID   int64   `json:"id"`
+	Name string  `json:"name"`
+	Bio  *string `json:"bio"`
 }
 
 type Book struct {

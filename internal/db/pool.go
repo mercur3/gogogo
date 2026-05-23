@@ -12,8 +12,16 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func InitPool(ctx context.Context, username string, password string, dbName string, port string) (*pgxpool.Pool, error) {
-	cfg, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@localhost:%s/%s", username, password, port, dbName))
+func InitPool(
+	ctx context.Context,
+	username string,
+	password string,
+	dbName string,
+	port string,
+) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(
+		fmt.Sprintf("postgres://%s:%s@localhost:%s/%s", username, password, port, dbName),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}

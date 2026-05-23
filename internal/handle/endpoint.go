@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -83,15 +84,26 @@ func getAllHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func MakeServerFromOpenAPI(author service.Author) *http.Server {
-	server := new(api.Server{})
+	server := api.NewServer(author)
 	middlewares := []api.StrictMiddlewareFunc{
-		middleware.TraceRequestMiddleware,
-		middleware.MaxRequestBody,
+		// middleware.TraceRequestMiddleware,
+		// middleware.MaxRequestBodyMiddleware,
 	}
 	i := api.NewStrictHandler(server, middlewares)
 
 	r := http.NewServeMux()
 	h := api.HandlerFromMux(i, r)
+
+	swagger, err := api.GetSpec()
+	if err != nil {
+		panic(err)
+	}
+	swagger.Servers = nil // clear servers so it doesn't validate the host
+	h = nethttpmiddleware.OapiRequestValidator(swagger)(h)
+	// these need to run over the std net/http or otherwise there is no instrumentation on the
+	// request that fail due to the oapi validator middleware
+	h = middleware.TraceRequest(h)
+	h = http.MaxBytesHandler(h, 1<<20)
 
 	return &http.Server{
 		Addr:         ":8080",

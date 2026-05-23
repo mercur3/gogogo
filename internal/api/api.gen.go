@@ -7,22 +7,54 @@ package api
 
 import (
 	"bytes"
+	"compress/flate"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Pong defines model for Pong.
-type Pong struct {
-	Ping string `json:"ping"`
+// Author defines model for Author.
+type Author struct {
+	Bio  *string `json:"bio,omitempty"`
+	Id   int64   `json:"id"`
+	Name string  `json:"name"`
 }
+
+// AuthorCreateRequest defines model for AuthorCreateRequest.
+type AuthorCreateRequest struct {
+	Bio  *string `json:"bio,omitempty"`
+	Name string  `json:"name"`
+}
+
+// ErrorMsg defines model for ErrorMsg.
+type ErrorMsg struct {
+	Msg       string             `json:"msg"`
+	RequestId openapi_types.UUID `json:"requestId"`
+}
+
+// CreateAuthorJSONRequestBody defines body for CreateAuthor for application/json ContentType.
+type CreateAuthorJSONRequestBody = AuthorCreateRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Get ping
-	// (GET /ping)
-	GetPing(w http.ResponseWriter, r *http.Request)
+	// Get all authors
+	// (GET /author)
+	GetAllAuthors(w http.ResponseWriter, r *http.Request)
+	// create author
+	// (POST /author)
+	CreateAuthor(w http.ResponseWriter, r *http.Request)
+	// Get author
+	// (GET /author/{id})
+	GetAuthor(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -34,11 +66,51 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// GetPing operation middleware
-func (siw *ServerInterfaceWrapper) GetPing(w http.ResponseWriter, r *http.Request) {
+// GetAllAuthors operation middleware
+func (siw *ServerInterfaceWrapper) GetAllAuthors(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetPing(w, r)
+		siw.Handler.GetAllAuthors(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAuthor operation middleware
+func (siw *ServerInterfaceWrapper) CreateAuthor(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAuthor(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuthor operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthor(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuthor(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -168,21 +240,23 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/ping", wrapper.GetPing)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author", wrapper.GetAllAuthors)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/author", wrapper.CreateAuthor)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author/{id}", wrapper.GetAuthor)
 
 	return m
 }
 
-type GetPingRequestObject struct {
+type GetAllAuthorsRequestObject struct {
 }
 
-type GetPingResponseObject interface {
-	VisitGetPingResponse(w http.ResponseWriter) error
+type GetAllAuthorsResponseObject interface {
+	VisitGetAllAuthorsResponse(w http.ResponseWriter) error
 }
 
-type GetPing200JSONResponse Pong
+type GetAllAuthors200JSONResponse []Author
 
-func (response GetPing200JSONResponse) VisitGetPingResponse(w http.ResponseWriter) error {
+func (response GetAllAuthors200JSONResponse) VisitGetAllAuthorsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -194,11 +268,89 @@ func (response GetPing200JSONResponse) VisitGetPingResponse(w http.ResponseWrite
 	return err
 }
 
+type CreateAuthorRequestObject struct {
+	Body *CreateAuthorJSONRequestBody
+}
+
+type CreateAuthorResponseObject interface {
+	VisitCreateAuthorResponse(w http.ResponseWriter) error
+}
+
+type CreateAuthor200JSONResponse Author
+
+func (response CreateAuthor200JSONResponse) VisitCreateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAuthor400JSONResponse ErrorMsg
+
+func (response CreateAuthor400JSONResponse) VisitCreateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthorRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type GetAuthorResponseObject interface {
+	VisitGetAuthorResponse(w http.ResponseWriter) error
+}
+
+type GetAuthor200JSONResponse Author
+
+func (response GetAuthor200JSONResponse) VisitGetAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthor404JSONResponse ErrorMsg
+
+func (response GetAuthor404JSONResponse) VisitGetAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Get ping
-	// (GET /ping)
-	GetPing(ctx context.Context, request GetPingRequestObject) (GetPingResponseObject, error)
+	// Get all authors
+	// (GET /author)
+	GetAllAuthors(ctx context.Context, request GetAllAuthorsRequestObject) (GetAllAuthorsResponseObject, error)
+	// create author
+	// (POST /author)
+	CreateAuthor(ctx context.Context, request CreateAuthorRequestObject) (CreateAuthorResponseObject, error)
+	// Get author
+	// (GET /author/{id})
+	GetAuthor(ctx context.Context, request GetAuthorRequestObject) (GetAuthorResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -230,26 +382,189 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// GetPing operation middleware
-func (sh *strictHandler) GetPing(w http.ResponseWriter, r *http.Request) {
-	var request GetPingRequestObject
+// GetAllAuthors operation middleware
+func (sh *strictHandler) GetAllAuthors(w http.ResponseWriter, r *http.Request) {
+	var request GetAllAuthorsRequestObject
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetPing(ctx, request.(GetPingRequestObject))
+		return sh.ssi.GetAllAuthors(ctx, request.(GetAllAuthorsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetPing")
+		handler = middleware(handler, "GetAllAuthors")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetPingResponseObject); ok {
-		if err := validResponse.VisitGetPingResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetAllAuthorsResponseObject); ok {
+		if err := validResponse.VisitGetAllAuthorsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// CreateAuthor operation middleware
+func (sh *strictHandler) CreateAuthor(w http.ResponseWriter, r *http.Request) {
+	var request CreateAuthorRequestObject
+
+	var body CreateAuthorJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAuthor(ctx, request.(CreateAuthorRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAuthor")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateAuthorResponseObject); ok {
+		if err := validResponse.VisitCreateAuthorResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAuthor operation middleware
+func (sh *strictHandler) GetAuthor(w http.ResponseWriter, r *http.Request, id int64) {
+	var request GetAuthorRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAuthor(ctx, request.(GetAuthorRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAuthor")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAuthorResponseObject); ok {
+		if err := validResponse.VisitGetAuthorResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
+// Stored as a slice of fixed-width chunks rather than one concatenated
+// const string: with thousands of chunks the chained `+` fold is several
+// times slower for the Go compiler than parsing a slice literal.
+var swaggerSpec = []string{
+	"xFTPjtM8EH+VaL7vGG0KVBxyKwihPayEuK724CbTdpbY4x1PVqqqvDuynYZWDbtFIDjFcjwzv3/2ARq2",
+	"nh06DVAfIDQ7tCYtV73uWOLKC3sUJUz7a+L40b1HqCGokNvCUAK1cXvDYo1CDeT0/RLK4zlyiluUeNAZ",
+	"izMdhhIEn3oSbKG+j+3Gow9TE14/YqOxRwb3UdAofsWnHoNej/Q6AD+d/UmE5S5sLwfavHkxUDLC23OF",
+	"+j5xfBlFbHna4BJQrCC3yVRJu/jvjhxZ0xWrL7dFQHlGgRKeUQKxgxre3CxuFhEYe3TGE9TwLm2V4I3u",
+	"EpfKTP5vMYkbmRoldpEHfEZddV32ISSIwbMLWYi3i0X8NOwUXSo23nfUpPLqMUQUx7DFFSnaVPi/4AZq",
+	"+K/6EctqzGQ1BnKYFDAiZp8FaDE0Ql4zP/6WdAy9tUb2GWxhuq4wI9yhBM9hhlVO1Dhp0v0Dt/tf4vM6",
+	"jfPoDue2q/Q4/Kak1yg5r1wJyz84a7otM9PWpi1kkuDUsCbJM/qV/o15rA7UDi+G8uidN2IsKkqA+v4A",
+	"FAfGdB+flTo/MeeqlyesXn3Khod/6tHyr3jkWIsN966du1ITxuF7AAAA//8=",
+}
+
+// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
+// after base64-decoding and flate-decompressing the embedded blob.
+func decodeSpec() ([]byte, error) {
+	encoded := strings.Join(swaggerSpec, "")
+	compressed, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr := flate.NewReader(bytes.NewReader(compressed))
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(zr); err != nil {
+		return nil, fmt.Errorf("read flate: %w", err)
+	}
+	if err := zr.Close(); err != nil {
+		return nil, fmt.Errorf("close flate reader: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cache of the decoded OpenAPI spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSpec returns the OpenAPI specification corresponding to the generated
+// code in this file. External references in the spec are resolved through
+// PathToRawSpec; externally-referenced files must be embedded in their
+// corresponding Go packages (via the import-mapping feature). URL-based
+// external refs are not supported.
+func GetSpec() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI
+// specification: decompressed but not unmarshaled. External references
+// are not resolved here; the bytes are the spec exactly as embedded by
+// codegen. The result is cached at package init time, so repeated calls
+// are cheap.
+func GetSpecJSON() ([]byte, error) {
+	return rawSpec()
+}
+
+// GetSwagger returns the OpenAPI specification corresponding to the
+// generated code in this file.
+//
+// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger
+// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for
+// backwards compatibility.
+func GetSwagger() (*openapi3.T, error) {
+	return GetSpec()
 }
