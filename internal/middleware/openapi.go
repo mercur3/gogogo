@@ -16,7 +16,7 @@ const RequestID string = "X-Request-ID"
 func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
 		tracer := otel.Tracer()
-		ctx, span := tracer.Start(r.Context(), "tracer-middleware")
+		ctx, span := tracer.Start(ctx, "tracer-middleware")
 
 		wrapper := new(responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w})
 

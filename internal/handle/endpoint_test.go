@@ -44,7 +44,11 @@ func TestCallingV1GetAll_AlwaysWorks(t *testing.T) {
 			// assert.Equal(t, http.StatusOK, w.Code)
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 
-			defer res.Body.Close()
+			defer func() {
+				if err := res.Body.Close(); err != nil {
+					t.Errorf("failed to close response body: %s", err)
+				}
+			}()
 			var body string
 			// err := json.NewDecoder(w.Body).Decode(&body)
 			assert.NoError(t, json.NewDecoder(res.Body).Decode(&body))

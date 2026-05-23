@@ -41,12 +41,12 @@ func TestMain(m *testing.M) {
 	assertNoError(pgPool.Ping(ctx))
 
 	// run the migrations
-	db.RunMigrations(pgPool)
+	assertNoError(db.RunMigrations(pgPool))
 
 	code := m.Run() // run ALL tests in this package once
 
 	pgPool.Close()
-	testcontainers.TerminateContainer(pg)
+	assertNoError(testcontainers.TerminateContainer(pg))
 	os.Exit(code)
 }
 

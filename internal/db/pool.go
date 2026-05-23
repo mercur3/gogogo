@@ -39,7 +39,11 @@ func RunMigrations(pool *pgxpool.Pool) error {
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("failed to close the db connection after migration", slog.Any("error", err))
+		}
+	}()
 
 	slog.Info("Running the migrations")
 

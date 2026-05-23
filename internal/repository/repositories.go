@@ -31,7 +31,7 @@ func WithTx[T any](ctx context.Context, r *Repositories, fn func() (T, error)) (
 		slog.Error("failed to create a transaction", slog.Any("error", err))
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a harmless no-op
 
 	res, err := fn()
 	if err != nil {
