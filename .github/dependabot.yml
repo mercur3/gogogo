@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Go (backend)
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      gomod-minor-patch:
+        update-types:
+          - minor
+          - patch
+      gomod-major:
+        update-types:
+          - major
+    open-pull-requests-limit: 10
+    assignees:
+      - "mercur3"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
+      actions-major:
+        update-types:
+          - major
+    assignees:
+      - "mercur3"

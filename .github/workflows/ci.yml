@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel in-progress runs for PRs (saves free-tier minutes).
+# Pushes to master always run to completion.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  run-test:
+    name: Run Test
+    runs-on: ubuntu-latest
+    container:
+      image: golangci/golangci-lint:v2.11
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install make
+        run: apt-get update && apt-get install -y --no-install-recommends make podman podman-compose
+
+      - name: Lint
+        run: make lint
+
+      - name: test
+        run: make test
+
+      - name: vulncheck
+        run: make vulncheck

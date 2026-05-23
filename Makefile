@@ -22,9 +22,20 @@ clean:
 test:
 	go test -race -shuffle=on ./...
 
-run:
+.PHONY: run
+run: fmt
 	go run ./...
+
+.PHONY: fmt
+fmt:
+	gofmt -w . && \
+		golines -w .
 
 .PHONY: vulncheck
 vulncheck:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+.PHONY: lint
+lint:
+	@test -z "$$(gofmt -l .)" || (echo "gofmt: unformatted files:" && gofmt -l . && exit 1)
+	golangci-lint run
