@@ -11,25 +11,29 @@ import (
 
 type Repositories struct {
 	Author *AuthorRepo
+	Book   *BookRepo
+	pool   *pgxpool.Pool
 }
 
-func New(dbtx db.DBTX) Repositories {
-	q := db.New(dbtx)
+func New(pool *pgxpool.Pool) Repositories {
+	q := db.New(pool)
 
 	return Repositories{
-		Author: &AuthorRepo{q: q},
+		Author: &AuthorRepo{q},
+		Book:   &BookRepo{q},
+		pool:   pool,
 	}
 }
 
-func WithTx[T any](ctx context.Context, pool *pgxpool.Pool, fn func(r *Repositories) (T, error)) (*T, error) {
-	tx, err := pool.Begin(ctx)
+func WithTx[T any](ctx context.Context, r *Repositories, fn func() (T, error)) (*T, error) {
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		slog.Error("failed to create a transaction", slog.Any("error", err))
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
-	res, err := fn(new(New(tx)))
+	res, err := fn()
 	if err != nil {
 		return nil, err
 	}

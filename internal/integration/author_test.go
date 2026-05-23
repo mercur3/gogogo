@@ -21,11 +21,12 @@ func TestCreate(t *testing.T) {
 		},
 	}
 
+	repo := repository.New(pgPool)
 	out, err := repository.WithTx(
 		t.Context(),
-		pgPool,
-		func(r *repository.Repositories) (db.Author, error) {
-			service := service.Author{R: r}
+		&repo,
+		func() (db.Author, error) {
+			service := service.AuthorService(&repo)
 			return service.Create(t.Context(), author)
 		},
 	)

@@ -7,17 +7,21 @@ import (
 )
 
 type Author struct {
-	R *repository.Repositories
+	r *repository.Repositories
+}
+
+func AuthorService(r *repository.Repositories) Author {
+	return Author{r: r}
 }
 
 func (a *Author) Get(ctx context.Context, id int64) (db.Author, error) {
-	return a.R.Author.GetAuthor(ctx, id)
+	return a.r.Author.GetAuthor(ctx, id)
 }
 
 func (a *Author) GetAll(ctx context.Context) ([]db.Author, error) {
-	return a.R.Author.ListAuthors(ctx)
+	return a.r.Author.ListAuthors(ctx)
 }
 
 func (a *Author) Create(ctx context.Context, params db.CreateAuthorParams) (db.Author, error) {
-	return a.R.Author.CreateAuthor(ctx, params)
+	return a.r.Author.CreateAuthor(ctx, params)
 }

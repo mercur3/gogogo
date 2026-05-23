@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"goweb/internal/db"
 	"os"
 	"testing"
 	"time"
@@ -39,8 +40,8 @@ func TestMain(m *testing.M) {
 	assertNoError(err)
 	assertNoError(pgPool.Ping(ctx))
 
-	_, err = pgPool.Exec(ctx, "CREATE TABLE authors (id BIGSERIAL PRIMARY KEY, name text NOT NULL, bio text);")
-	assertNoError(err)
+	// run the migrations
+	db.RunMigrations(pgPool)
 
 	code := m.Run() // run ALL tests in this package once
 

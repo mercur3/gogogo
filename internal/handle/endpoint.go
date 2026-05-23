@@ -2,6 +2,7 @@ package handle
 
 import (
 	"fmt"
+	"goweb/internal/api"
 	"goweb/internal/middleware"
 	"goweb/internal/otel"
 	"goweb/internal/service"
@@ -79,4 +80,24 @@ func MakeServer(author service.Author) *http.Server {
 
 func getAllHandler(w http.ResponseWriter, r *http.Request) {
 	writeBody(w, http.StatusOK, "GET /v1/test")
+}
+
+func MakeServerFromOpenAPI(author service.Author) *http.Server {
+	server := new(api.Server{})
+	middlewares := []api.StrictMiddlewareFunc{
+		middleware.TraceRequestMiddleware,
+		middleware.MaxRequestBody,
+	}
+	i := api.NewStrictHandler(server, middlewares)
+
+	r := http.NewServeMux()
+	h := api.HandlerFromMux(i, r)
+
+	return &http.Server{
+		Addr:         ":8080",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+		Handler:      h,
+	}
 }
