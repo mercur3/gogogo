@@ -3,6 +3,7 @@ module goweb
 go 1.26.3
 
 require (
+	github.com/exaring/otelpgx v0.11.1
 	github.com/getkin/kin-openapi v0.135.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
@@ -83,6 +84,7 @@ require (
 	github.com/oapi-codegen/oapi-codegen/v2 v2.7.0 // indirect
 	github.com/oasdiff/yaml v0.0.9 // indirect
 	github.com/oasdiff/yaml3 v0.0.9 // indirect
+	github.com/onsi/gomega v1.40.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect

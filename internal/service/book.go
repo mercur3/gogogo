@@ -30,3 +30,11 @@ func (b *Book) PublishBook(ctx context.Context, bookID int64, authorID int64) er
 
 	return err
 }
+
+func (b *Book) CreateBook(ctx context.Context, arg db.CreateBookParams) (db.Book, error) {
+	return b.r.Book.CreateBook(ctx, arg)
+}
+
+func (b *Book) GetBook(ctx context.Context, id int64) (db.Book, error) {
+	return b.r.Book.GetBook(ctx, id)
+}

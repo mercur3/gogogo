@@ -7,6 +7,7 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -27,6 +28,7 @@ func InitPool(
 	}
 	cfg.MaxConns = 10
 	cfg.MinConns = 2
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

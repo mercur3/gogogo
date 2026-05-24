@@ -42,11 +42,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	repositories := repository.New(pool)
-	author := service.AuthorService(&repositories)
+	repositories := new(repository.New(pool))
+	author := service.AuthorService(repositories)
+	book := service.BookService(repositories)
 
 	// srv := handle.MakeServer(author)
-	srv := handle.MakeServerFromOpenAPI(author)
+	srv := handle.MakeServerFromOpenAPI(author, book)
 	go func() {
 		slog.Info("Server starting")
 

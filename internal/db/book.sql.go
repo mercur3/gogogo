@@ -7,8 +7,7 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const createBook = `-- name: CreateBook :one
@@ -18,8 +17,8 @@ returning id, title, published_at
 `
 
 type CreateBookParams struct {
-	Title       string             `json:"title"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	Title       string    `json:"title"`
+	PublishedAt time.Time `json:"published_at"`
 }
 
 func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (Book, error) {

@@ -11,11 +11,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
@@ -35,14 +37,35 @@ type AuthorCreateRequest struct {
 	Name string  `json:"name"`
 }
 
+// Book defines model for Book.
+type Book struct {
+	Id          int64     `json:"id"`
+	PublishedAt time.Time `json:"publishedAt"`
+	Title       string    `json:"title"`
+}
+
+// CreateBookRequest defines model for CreateBookRequest.
+type CreateBookRequest struct {
+	PublishedAt time.Time `json:"publishedAt"`
+	Title       string    `json:"title"`
+}
+
 // ErrorMsg defines model for ErrorMsg.
 type ErrorMsg struct {
 	Msg       string             `json:"msg"`
 	RequestId openapi_types.UUID `json:"requestId"`
 }
 
+// PublishBookParams defines parameters for PublishBook.
+type PublishBookParams struct {
+	AuthorId int64 `form:"authorId" json:"authorId"`
+}
+
 // CreateAuthorJSONRequestBody defines body for CreateAuthor for application/json ContentType.
 type CreateAuthorJSONRequestBody = AuthorCreateRequest
+
+// CreateBookJSONRequestBody defines body for CreateBook for application/json ContentType.
+type CreateBookJSONRequestBody = CreateBookRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -55,6 +78,15 @@ type ServerInterface interface {
 	// Get author
 	// (GET /author/{id})
 	GetAuthor(w http.ResponseWriter, r *http.Request, id int64)
+	// create book
+	// (POST /book)
+	CreateBook(w http.ResponseWriter, r *http.Request)
+	// publish book
+	// (POST /book/{bookId}/publish)
+	PublishBook(w http.ResponseWriter, r *http.Request, bookId int64, params PublishBookParams)
+	// get book
+	// (GET /book/{id})
+	GetBook(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -111,6 +143,88 @@ func (siw *ServerInterfaceWrapper) GetAuthor(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAuthor(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateBook operation middleware
+func (siw *ServerInterfaceWrapper) CreateBook(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateBook(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PublishBook operation middleware
+func (siw *ServerInterfaceWrapper) PublishBook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bookId" -------------
+	var bookId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookId", r.PathValue("bookId"), &bookId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bookId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PublishBookParams
+
+	// ------------- Required query parameter "authorId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "authorId", r.URL.Query(), &params.AuthorId, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "authorId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "authorId", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PublishBook(w, r, bookId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetBook operation middleware
+func (siw *ServerInterfaceWrapper) GetBook(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBook(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -243,6 +357,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author", wrapper.GetAllAuthors)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/author", wrapper.CreateAuthor)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author/{id}", wrapper.GetAuthor)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/book", wrapper.CreateBook)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/book/{bookId}/publish", wrapper.PublishBook)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/book/{id}", wrapper.GetBook)
 
 	return m
 }
@@ -340,6 +457,123 @@ func (response GetAuthor404JSONResponse) VisitGetAuthorResponse(w http.ResponseW
 	return err
 }
 
+type CreateBookRequestObject struct {
+	Body *CreateBookJSONRequestBody
+}
+
+type CreateBookResponseObject interface {
+	VisitCreateBookResponse(w http.ResponseWriter) error
+}
+
+type CreateBook200JSONResponse Book
+
+func (response CreateBook200JSONResponse) VisitCreateBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateBook400JSONResponse ErrorMsg
+
+func (response CreateBook400JSONResponse) VisitCreateBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishBookRequestObject struct {
+	BookId int64 `json:"bookId"`
+	Params PublishBookParams
+}
+
+type PublishBookResponseObject interface {
+	VisitPublishBookResponse(w http.ResponseWriter) error
+}
+
+type PublishBook204Response struct {
+}
+
+func (response PublishBook204Response) VisitPublishBookResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type PublishBook400JSONResponse ErrorMsg
+
+func (response PublishBook400JSONResponse) VisitPublishBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PublishBook404JSONResponse ErrorMsg
+
+func (response PublishBook404JSONResponse) VisitPublishBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetBookRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type GetBookResponseObject interface {
+	VisitGetBookResponse(w http.ResponseWriter) error
+}
+
+type GetBook200JSONResponse Book
+
+func (response GetBook200JSONResponse) VisitGetBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetBook404JSONResponse ErrorMsg
+
+func (response GetBook404JSONResponse) VisitGetBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Get all authors
@@ -351,6 +585,15 @@ type StrictServerInterface interface {
 	// Get author
 	// (GET /author/{id})
 	GetAuthor(ctx context.Context, request GetAuthorRequestObject) (GetAuthorResponseObject, error)
+	// create book
+	// (POST /book)
+	CreateBook(ctx context.Context, request CreateBookRequestObject) (CreateBookResponseObject, error)
+	// publish book
+	// (POST /book/{bookId}/publish)
+	PublishBook(ctx context.Context, request PublishBookRequestObject) (PublishBookResponseObject, error)
+	// get book
+	// (GET /book/{id})
+	GetBook(ctx context.Context, request GetBookRequestObject) (GetBookResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -463,19 +706,106 @@ func (sh *strictHandler) GetAuthor(w http.ResponseWriter, r *http.Request, id in
 	}
 }
 
+// CreateBook operation middleware
+func (sh *strictHandler) CreateBook(w http.ResponseWriter, r *http.Request) {
+	var request CreateBookRequestObject
+
+	var body CreateBookJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateBook(ctx, request.(CreateBookRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateBook")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateBookResponseObject); ok {
+		if err := validResponse.VisitCreateBookResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PublishBook operation middleware
+func (sh *strictHandler) PublishBook(w http.ResponseWriter, r *http.Request, bookId int64, params PublishBookParams) {
+	var request PublishBookRequestObject
+
+	request.BookId = bookId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PublishBook(ctx, request.(PublishBookRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PublishBook")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PublishBookResponseObject); ok {
+		if err := validResponse.VisitPublishBookResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetBook operation middleware
+func (sh *strictHandler) GetBook(w http.ResponseWriter, r *http.Request, id int64) {
+	var request GetBookRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetBook(ctx, request.(GetBookRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetBook")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetBookResponseObject); ok {
+		if err := validResponse.VisitGetBookResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"xFTPjtM8EH+VaL7vGG0KVBxyKwihPayEuK724CbTdpbY4x1PVqqqvDuynYZWDbtFIDjFcjwzv3/2ARq2",
-	"nh06DVAfIDQ7tCYtV73uWOLKC3sUJUz7a+L40b1HqCGokNvCUAK1cXvDYo1CDeT0/RLK4zlyiluUeNAZ",
-	"izMdhhIEn3oSbKG+j+3Gow9TE14/YqOxRwb3UdAofsWnHoNej/Q6AD+d/UmE5S5sLwfavHkxUDLC23OF",
-	"+j5xfBlFbHna4BJQrCC3yVRJu/jvjhxZ0xWrL7dFQHlGgRKeUQKxgxre3CxuFhEYe3TGE9TwLm2V4I3u",
-	"EpfKTP5vMYkbmRoldpEHfEZddV32ISSIwbMLWYi3i0X8NOwUXSo23nfUpPLqMUQUx7DFFSnaVPi/4AZq",
-	"+K/6EctqzGQ1BnKYFDAiZp8FaDE0Ql4zP/6WdAy9tUb2GWxhuq4wI9yhBM9hhlVO1Dhp0v0Dt/tf4vM6",
-	"jfPoDue2q/Q4/Kak1yg5r1wJyz84a7otM9PWpi1kkuDUsCbJM/qV/o15rA7UDi+G8uidN2IsKkqA+v4A",
-	"FAfGdB+flTo/MeeqlyesXn3Khod/6tHyr3jkWIsN966du1ITxuF7AAAA//8=",
+	"zFXLbts6EP0VY+5dqpHbBl1o5xRF4UWAoNsgC1oa20wkkhmOAhiG/r3gw7IFybaKPJxNLDDk8DzmDLeQ",
+	"68pohYotZFuw+Ror4T9nNa81uS9D2iCxRL++kNr98MYgZGCZpFpBk4As3PJSUyUYMpCKf1xDstsnFeMK",
+	"yW1UosKBCk0ChM+1JCwgu3fl4taHtohePGLOrkYA95NQMP7B5xotj0c6DsDRu2+0fupfNpq+qReltGss",
+	"Ztw5UQjGLywr3J/aQ2bJ5VjRwt7uRUM8gnqOzVEF3xPrWJi/iDTd2lUfXRUWewAo0Jl3HanroM5JUK7k",
+	"YYE+IHdCqmXorMAUbqWSlSgns7v5xCK9IEECL0hWagUZfL2aXk0dMG1QCSMhg+9+KQEjeO25pKKN2wq9",
+	"2I6pYKmV4wG/kWdlGdreeojWaGWDEN+mU/eTa8Wo/GFhTClzfzx9tA7FLtu+Vxkrf/B/wiVk8F+6nwJp",
+	"HAFpzH/TKiCIxCYIUKDNSRoO/PST19HWVSVoE8BORFlORITrul7bAVahBeNNre43utj8E5/zNLqTouna",
+	"zlRj80pJxyg5rFwC1294V5uWgdsWophQK8GhYbmXJ/rl/xf7Md3KojnZlDvvjCBRISNZyO63IN2Frrt3",
+	"UzwLw6mrenLA6uzobB4u6tH1h3ikNE+WulbFUKQO7FnsHqETufIP1fukqv92fHCmPLeLJ+qYWzFPCx1H",
+	"o7cr3bq/86JJ45N33L+7sCEaeD5aofAr45XE0s810mZfO3Td/O3D6wP1aebh5SMeu6LXNWcm8Ogm+dTz",
+	"91yeL2vNCnlnS9P8DQAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -83,8 +83,8 @@ func getAllHandler(w http.ResponseWriter, r *http.Request) {
 	writeBody(w, http.StatusOK, "GET /v1/test")
 }
 
-func MakeServerFromOpenAPI(author service.Author) *http.Server {
-	server := api.NewServer(author)
+func MakeServerFromOpenAPI(a service.Author, b service.Book) *http.Server {
+	server := api.NewServer(a, b)
 	middlewares := []api.StrictMiddlewareFunc{
 		// middleware.TraceRequestMiddleware,
 		// middleware.MaxRequestBodyMiddleware,

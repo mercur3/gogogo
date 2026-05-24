@@ -5,7 +5,7 @@
 package db
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type Author struct {
@@ -15,9 +15,9 @@ type Author struct {
 }
 
 type Book struct {
-	ID          int64              `json:"id"`
-	Title       string             `json:"title"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	ID          int64     `json:"id"`
+	Title       string    `json:"title"`
+	PublishedAt time.Time `json:"published_at"`
 }
 
 type BookAuthor struct {

@@ -3,6 +3,8 @@ info:
   version: 1.0.0
   title: Minimal API server
 paths:
+  #############################################################################
+  # Author
   /author:
     get:
       summary: Get all authors
@@ -62,6 +64,88 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMsg"
+  #############################################################################
+  # Book
+  /book:
+    post:
+      summary: create book
+      operationId: CreateBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+  /book/{id}:
+    get:
+      summary: get book
+      operationId: GetBook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+  /book/{bookId}/publish:
+    post:
+      summary: publish book
+      operationId: PublishBook
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: authorId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: ok
+        "400":
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "404":
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+
 components:
   schemas:
     # base types
@@ -98,3 +182,29 @@ components:
           type: string
         bio:
           type: string
+    Book:
+      type: object
+      required:
+        - id
+        - title
+        - publishedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+    CreateBookRequest:
+      type: object
+      required:
+        - title
+        - publishedAt
+      properties:
+        title:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
