@@ -86,7 +86,7 @@ func getAllHandler(w http.ResponseWriter, r *http.Request) {
 	writeBody(w, http.StatusOK, "GET /v1/test")
 }
 
-func MakeServerFromOpenAPI(a service.Author, b service.Book) *http.Server {
+func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Book) *http.Server {
 	server := api.NewServer(a, b)
 	middlewares := []api.StrictMiddlewareFunc{
 		// middleware.TraceRequestMiddleware,
@@ -130,7 +130,7 @@ func MakeServerFromOpenAPI(a service.Author, b service.Book) *http.Server {
 	// these need to run over the std net/http or otherwise there is no instrumentation on the
 	// request that fail due to the oapi validator middleware
 	h = middleware.TraceRequest(h)
-	h = http.MaxBytesHandler(h, 1<<20)
+	h = http.MaxBytesHandler(h, config.MaxBodySize)
 
 	return &http.Server{
 		Addr:         ":8080",

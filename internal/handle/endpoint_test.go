@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"goweb/internal/common"
 	"goweb/internal/service"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 
@@ -95,4 +97,37 @@ func TestGetById_WorksWhenNum(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("GET /v1/test/{%s}", strValue), body)
 		})
 	}
+}
+
+func Test_max_request_body_size(t *testing.T) {
+	t.Parallel()
+
+	// setup
+	file, err := os.Open("./invalid.json")
+	assert.NoError(t, err)
+	defer file.Close()
+
+	server := MakeServerFromOpenAPI(
+		common.Config{MaxBodySize: 1000},
+		service.Author{},
+		service.Book{},
+	)
+	req := httptest.NewRequest(http.MethodPost, "/author", file)
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	w := httptest.NewRecorder()
+
+	// test
+	server.Handler.ServeHTTP(w, req)
+
+	// verify
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	bytes, err := io.ReadAll(w.Body)
+	assert.NoError(t, err)
+	str := string(bytes)
+	assert.Equal(
+		t,
+		str,
+		"request body has an error: reading failed: http: request body too large\n",
+	)
 }

@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"errors"
+	"goweb/internal/common"
 	"goweb/internal/db"
 	"goweb/internal/handle"
 	"goweb/internal/otel"
@@ -47,7 +48,7 @@ func main() {
 	book := service.BookService(repositories)
 
 	// srv := handle.MakeServer(author)
-	srv := handle.MakeServerFromOpenAPI(author, book)
+	srv := handle.MakeServerFromOpenAPI(common.Config{MaxBodySize: 1 << 20}, author, book)
 	go func() {
 		slog.Info("Server starting")
 

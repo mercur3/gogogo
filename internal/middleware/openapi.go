@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"goweb/internal/api"
+	"goweb/internal/common"
 	"goweb/internal/otel"
 	"log/slog"
 	"net/http"
@@ -42,11 +43,15 @@ func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.Str
 	}
 }
 
-func MaxRequestBodyMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
-	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+func MaxRequestBodyMiddleware(
+	configs common.Config,
+) func(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
+	return func(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
+		return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+			r.Body = http.MaxBytesReader(w, r.Body, configs.MaxBodySize)
 
-		return f(ctx, w, r, request)
+			return f(ctx, w, r, request)
+		}
 	}
 }
 
