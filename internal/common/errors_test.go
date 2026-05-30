@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -25,4 +26,21 @@ func Test_AsType_works(t *testing.T) {
 	assert.Equal(t, out.Kind, ErrKind(ErrAlreadyExists))
 	assert.Equal(t, out.Msg, "")
 	assert.Equal(t, out.Parent, pgx.ErrTooManyRows)
+}
+
+func Test_Error_prints_only_msg_when_no_parent(t *testing.T) {
+	t.Parallel()
+
+	msg := "root error"
+	err := NewTypedErr(ErrUnknown, msg, nil)
+
+	assert.Equal(t, msg, err.Error())
+}
+
+func Test_Error_prints_both_msg_and_parent_when_not_nil(t *testing.T) {
+	t.Parallel()
+
+	err := NewTypedErr(ErrUnknown, "root error", os.ErrClosed)
+
+	assert.Equal(t, "root error: file already closed", err.Error())
 }

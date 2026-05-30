@@ -15,7 +15,7 @@ func BookService(r *repository.Repositories) Book {
 }
 
 func (b *Book) PublishBook(ctx context.Context, bookID int64, authorID int64) error {
-	_, err := repository.WithTx(ctx, b.r, func() (struct{}, error) {
+	_, err := repository.WithTx(ctx, b.r, func(ctx context.Context) (struct{}, error) {
 		if _, err := b.r.Book.GetBook(ctx, bookID); err != nil {
 			return struct{}{}, err
 		}

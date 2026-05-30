@@ -65,6 +65,7 @@ func OperationIdMiddleware(f api.StrictHandlerFunc, operationID string) api.Stri
 	}
 }
 
+// setRequestId sets the `X-Request-ID` header empty. It will set a new one if it is not a valid UUID
 func setRequestId(
 	ctx context.Context,
 	r *http.Request,
@@ -85,6 +86,7 @@ func setRequestId(
 		}
 
 		requestID = parsed
+		requestIDStr = requestID.String()
 	}
 
 	w.Header().Set(requestIdHeader, requestIDStr)

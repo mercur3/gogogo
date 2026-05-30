@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"goweb/internal/db"
 	"goweb/internal/repository"
 	"goweb/internal/service"
@@ -21,9 +22,9 @@ func TestCreate(t *testing.T) {
 	out, err := repository.WithTx(
 		t.Context(),
 		&repo,
-		func() (db.Author, error) {
+		func(ctx context.Context) (db.Author, error) {
 			service := service.AuthorService(&repo)
-			return service.Create(t.Context(), author)
+			return service.Create(ctx, author)
 		},
 	)
 

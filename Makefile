@@ -39,3 +39,10 @@ vulncheck:
 lint:
 	@test -z "$$(gofmt -l .)" || (echo "gofmt: unformatted files:" && gofmt -l . && exit 1)
 	golangci-lint run
+
+
+#####################################
+# // test coverage
+#
+# go test ./... -coverprofile=coverage.out -coverpkg=./...
+# go tool cover -html=coverage.out -o coverage.html

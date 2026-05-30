@@ -25,7 +25,11 @@ func New(pool *pgxpool.Pool) Repositories {
 	}
 }
 
-func WithTx[T any](ctx context.Context, r *Repositories, fn func() (T, error)) (*T, error) {
+func WithTx[T any](
+	ctx context.Context,
+	r *Repositories,
+	fn func(ctx context.Context) (T, error),
+) (*T, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		slog.Error("failed to create a transaction", slog.Any("error", err))
@@ -33,7 +37,7 @@ func WithTx[T any](ctx context.Context, r *Repositories, fn func() (T, error)) (
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a harmless no-op
 
-	res, err := fn()
+	res, err := fn(ctx)
 	if err != nil {
 		return nil, err
 	}
