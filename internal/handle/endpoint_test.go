@@ -3,6 +3,7 @@ package handle
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"goweb/internal/common"
 	"goweb/internal/service"
@@ -106,7 +107,7 @@ func Test_max_request_body_size(t *testing.T) {
 	file, err := os.Open("./invalid.json")
 	assert.NoError(t, err)
 	defer func() {
-		if err := file.Close(); err != nil {
+		if err := file.Close(); !errors.Is(err, os.ErrClosed) {
 			t.Errorf("failed to close file: %s", err.Error())
 		}
 	}()
