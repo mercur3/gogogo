@@ -30,14 +30,17 @@ func (q *Queries) CreateAuthor(ctx context.Context, arg CreateAuthorParams) (Aut
 	return i, err
 }
 
-const deleteAuthor = `-- name: DeleteAuthor :exec
+const deleteAuthor = `-- name: DeleteAuthor :execrows
 DELETE FROM authors
 WHERE id = $1
 `
 
-func (q *Queries) DeleteAuthor(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteAuthor, id)
-	return err
+func (q *Queries) DeleteAuthor(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAuthor, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAuthor = `-- name: GetAuthor :one
@@ -77,7 +80,7 @@ func (q *Queries) ListAuthors(ctx context.Context) ([]Author, error) {
 	return items, nil
 }
 
-const updateAuthor = `-- name: UpdateAuthor :exec
+const updateAuthor = `-- name: UpdateAuthor :execrows
 UPDATE authors
   set name = $1,
   bio = $2
@@ -90,7 +93,10 @@ type UpdateAuthorParams struct {
 	ID   int64   `json:"id"`
 }
 
-func (q *Queries) UpdateAuthor(ctx context.Context, arg UpdateAuthorParams) error {
-	_, err := q.db.Exec(ctx, updateAuthor, arg.Name, arg.Bio, arg.ID)
-	return err
+func (q *Queries) UpdateAuthor(ctx context.Context, arg UpdateAuthorParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateAuthor, arg.Name, arg.Bio, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

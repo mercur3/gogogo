@@ -30,17 +30,17 @@ func main() {
 	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	pool, err := db.InitPool(sigCtx, "exam-user", "exam-password", "exam-db", "5432")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer pool.Close()
-
 	otelClosers, err := otel.InitOtel(sigCtx)
 	defer closeOtel(sigCtx, otelClosers)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	pool, err := db.InitPool(sigCtx, "exam-user", "exam-password", "exam-db", "5432")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
 
 	repositories := new(repository.New(pool))
 	author := service.AuthorService(repositories)

@@ -23,15 +23,20 @@ func TraceRequest(h http.Handler) http.Handler {
 		tracer := otel.Tracer()
 		ctx, span := tracer.Start(r.Context(), "timed-middleware")
 
+		ctx, requestID := setRequestId(ctx, r, w)
 		wrapper := &responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w}
 
 		defer func(t time.Time) {
 			delta := time.Since(t) / 1000
-			span.SetAttributes(attribute.Int("request.time", int(delta)))
+			span.SetAttributes(attribute.Int("request.time-ms", int(delta)))
+			span.SetAttributes(attribute.String("request.id", requestID))
+			span.SetAttributes(attribute.Int("request.http.status", wrapper.statusCode))
+
 			span.SetAttributes(attribute.String("url.path", r.URL.Path))
 			span.SetAttributes(attribute.String("url.method", r.Method))
 			span.SetAttributes(attribute.String("url.host", r.Host))
-			span.SetAttributes(attribute.Int("http.status", wrapper.statusCode))
+
+			span.End()
 
 			span.End()
 		}(time.Now())

@@ -14,10 +14,11 @@ type serverError struct {
 }
 
 func writeBody[T any](w http.ResponseWriter, statusCode int, body T) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
+
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		slog.Error("failed to write body", slog.Any("error", err))
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 

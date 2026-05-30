@@ -2,6 +2,13 @@ openapi: "3.0.0"
 info:
   version: 1.0.0
   title: Minimal API server
+servers:
+  - url: "{scheme}://{host}/"
+    variables:
+      scheme:
+        default: http
+      host:
+        default: localhost:8080
 paths:
   #############################################################################
   # Author
@@ -18,6 +25,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Author"
+        "500":
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
     post:
       summary: create author
       operationId: CreateAuthor
@@ -28,7 +41,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AuthorCreateRequest"
       responses:
-        "200":
+        "201":
           description: ok
           content:
             application/json:
@@ -36,6 +49,12 @@ paths:
                 $ref: "#/components/schemas/Author"
         "400":
           description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
           content:
             application/json:
               schema:
@@ -64,6 +83,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+    put:
+      summary: update author
+      operationId: UpdateAuthor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorCreateRequest"
+      responses:
+        "400":
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "404":
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+
   #############################################################################
   # Book
   /book:
@@ -89,6 +150,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErrorMsg"
   /book/{id}:
     get:
       summary: get book
@@ -109,6 +178,12 @@ paths:
                 $ref: "#/components/schemas/Book"
         "404":
           description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
           content:
             application/json:
               schema:
@@ -141,6 +216,12 @@ paths:
                 $ref: "#/components/schemas/ErrorMsg"
         "404":
           description: not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMsg"
+        "500":
+          description: internal server error
           content:
             application/json:
               schema:

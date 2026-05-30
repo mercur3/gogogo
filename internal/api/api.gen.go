@@ -64,6 +64,9 @@ type PublishBookParams struct {
 // CreateAuthorJSONRequestBody defines body for CreateAuthor for application/json ContentType.
 type CreateAuthorJSONRequestBody = AuthorCreateRequest
 
+// UpdateAuthorJSONRequestBody defines body for UpdateAuthor for application/json ContentType.
+type UpdateAuthorJSONRequestBody = AuthorCreateRequest
+
 // CreateBookJSONRequestBody defines body for CreateBook for application/json ContentType.
 type CreateBookJSONRequestBody = CreateBookRequest
 
@@ -78,6 +81,9 @@ type ServerInterface interface {
 	// Get author
 	// (GET /author/{id})
 	GetAuthor(w http.ResponseWriter, r *http.Request, id int64)
+	// update author
+	// (PUT /author/{id})
+	UpdateAuthor(w http.ResponseWriter, r *http.Request, id int64)
 	// create book
 	// (POST /book)
 	CreateBook(w http.ResponseWriter, r *http.Request)
@@ -143,6 +149,32 @@ func (siw *ServerInterfaceWrapper) GetAuthor(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAuthor(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAuthor operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAuthor(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAuthor(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -357,6 +389,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author", wrapper.GetAllAuthors)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/author", wrapper.CreateAuthor)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/author/{id}", wrapper.GetAuthor)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/author/{id}", wrapper.UpdateAuthor)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/book", wrapper.CreateBook)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/book/{bookId}/publish", wrapper.PublishBook)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/book/{id}", wrapper.GetBook)
@@ -385,6 +418,20 @@ func (response GetAllAuthors200JSONResponse) VisitGetAllAuthorsResponse(w http.R
 	return err
 }
 
+type GetAllAuthors500JSONResponse ErrorMsg
+
+func (response GetAllAuthors500JSONResponse) VisitGetAllAuthorsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateAuthorRequestObject struct {
 	Body *CreateAuthorJSONRequestBody
 }
@@ -393,16 +440,16 @@ type CreateAuthorResponseObject interface {
 	VisitCreateAuthorResponse(w http.ResponseWriter) error
 }
 
-type CreateAuthor200JSONResponse Author
+type CreateAuthor201JSONResponse Author
 
-func (response CreateAuthor200JSONResponse) VisitCreateAuthorResponse(w http.ResponseWriter) error {
+func (response CreateAuthor201JSONResponse) VisitCreateAuthorResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -417,6 +464,20 @@ func (response CreateAuthor400JSONResponse) VisitCreateAuthorResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAuthor500JSONResponse ErrorMsg
+
+func (response CreateAuthor500JSONResponse) VisitCreateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -457,6 +518,71 @@ func (response GetAuthor404JSONResponse) VisitGetAuthorResponse(w http.ResponseW
 	return err
 }
 
+type GetAuthor500JSONResponse ErrorMsg
+
+func (response GetAuthor500JSONResponse) VisitGetAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthorRequestObject struct {
+	Id   int64 `json:"id"`
+	Body *UpdateAuthorJSONRequestBody
+}
+
+type UpdateAuthorResponseObject interface {
+	VisitUpdateAuthorResponse(w http.ResponseWriter) error
+}
+
+type UpdateAuthor400JSONResponse ErrorMsg
+
+func (response UpdateAuthor400JSONResponse) VisitUpdateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthor404JSONResponse ErrorMsg
+
+func (response UpdateAuthor404JSONResponse) VisitUpdateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthor500JSONResponse ErrorMsg
+
+func (response UpdateAuthor500JSONResponse) VisitUpdateAuthorResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateBookRequestObject struct {
 	Body *CreateBookJSONRequestBody
 }
@@ -489,6 +615,20 @@ func (response CreateBook400JSONResponse) VisitCreateBookResponse(w http.Respons
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateBook500JSONResponse []ErrorMsg
+
+func (response CreateBook500JSONResponse) VisitCreateBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -538,6 +678,20 @@ func (response PublishBook404JSONResponse) VisitPublishBookResponse(w http.Respo
 	return err
 }
 
+type PublishBook500JSONResponse ErrorMsg
+
+func (response PublishBook500JSONResponse) VisitPublishBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetBookRequestObject struct {
 	Id int64 `json:"id"`
 }
@@ -574,6 +728,20 @@ func (response GetBook404JSONResponse) VisitGetBookResponse(w http.ResponseWrite
 	return err
 }
 
+type GetBook500JSONResponse ErrorMsg
+
+func (response GetBook500JSONResponse) VisitGetBookResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Get all authors
@@ -585,6 +753,9 @@ type StrictServerInterface interface {
 	// Get author
 	// (GET /author/{id})
 	GetAuthor(ctx context.Context, request GetAuthorRequestObject) (GetAuthorResponseObject, error)
+	// update author
+	// (PUT /author/{id})
+	UpdateAuthor(ctx context.Context, request UpdateAuthorRequestObject) (UpdateAuthorResponseObject, error)
 	// create book
 	// (POST /book)
 	CreateBook(ctx context.Context, request CreateBookRequestObject) (CreateBookResponseObject, error)
@@ -706,6 +877,39 @@ func (sh *strictHandler) GetAuthor(w http.ResponseWriter, r *http.Request, id in
 	}
 }
 
+// UpdateAuthor operation middleware
+func (sh *strictHandler) UpdateAuthor(w http.ResponseWriter, r *http.Request, id int64) {
+	var request UpdateAuthorRequestObject
+
+	request.Id = id
+
+	var body UpdateAuthorJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateAuthor(ctx, request.(UpdateAuthorRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateAuthor")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateAuthorResponseObject); ok {
+		if err := validResponse.VisitUpdateAuthorResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateBook operation middleware
 func (sh *strictHandler) CreateBook(w http.ResponseWriter, r *http.Request) {
 	var request CreateBookRequestObject
@@ -795,17 +999,19 @@ func (sh *strictHandler) GetBook(w http.ResponseWriter, r *http.Request, id int6
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"zFXLbts6EP0VY+5dqpHbBl1o5xRF4UWAoNsgC1oa20wkkhmOAhiG/r3gw7IFybaKPJxNLDDk8DzmDLeQ",
-	"68pohYotZFuw+Ror4T9nNa81uS9D2iCxRL++kNr98MYgZGCZpFpBk4As3PJSUyUYMpCKf1xDstsnFeMK",
-	"yW1UosKBCk0ChM+1JCwgu3fl4taHtohePGLOrkYA95NQMP7B5xotj0c6DsDRu2+0fupfNpq+qReltGss",
-	"Ztw5UQjGLywr3J/aQ2bJ5VjRwt7uRUM8gnqOzVEF3xPrWJi/iDTd2lUfXRUWewAo0Jl3HanroM5JUK7k",
-	"YYE+IHdCqmXorMAUbqWSlSgns7v5xCK9IEECL0hWagUZfL2aXk0dMG1QCSMhg+9+KQEjeO25pKKN2wq9",
-	"2I6pYKmV4wG/kWdlGdreeojWaGWDEN+mU/eTa8Wo/GFhTClzfzx9tA7FLtu+Vxkrf/B/wiVk8F+6nwJp",
-	"HAFpzH/TKiCIxCYIUKDNSRoO/PST19HWVSVoE8BORFlORITrul7bAVahBeNNre43utj8E5/zNLqTouna",
-	"zlRj80pJxyg5rFwC1294V5uWgdsWophQK8GhYbmXJ/rl/xf7Md3KojnZlDvvjCBRISNZyO63IN2Frrt3",
-	"UzwLw6mrenLA6uzobB4u6tH1h3ikNE+WulbFUKQO7FnsHqETufIP1fukqv92fHCmPLeLJ+qYWzFPCx1H",
-	"o7cr3bq/86JJ45N33L+7sCEaeD5aofAr45XE0s810mZfO3Td/O3D6wP1aebh5SMeu6LXNWcm8Ogm+dTz",
-	"91yeL2vNCnlnS9P8DQAA//8=",
+	"5FdNa+M8EP4rQe97zNbpbncpvqXLsuRQKAt7Kj0o9iRRK0vqaFQIwf990UeSGufDJWka6CU2ymg+n3lm",
+	"vGCFroxWoMiyfMFsMYOKh9eho5lG/2ZQG0ASEM7HQvsHzQ2wnFlCoaas7jNR+uOJxooTy5lQ9OOK9Zdy",
+	"QhFMAb2g4hVs0FD3GcKzEwgly++9uiT6sFKix49QkNcRnfuJwAn+wLMDS9097ebAVts3Wj+1jXUO37ix",
+	"FHYG5ZAaN0pO8IVEBetba5dJkOyatCjbNLQpjpg9H83WDL6nr13d/IWo8dZO295V8bDlAMZwRs2KOBez",
+	"s9Mpr/K1grZD/oZQk4isGCm7FUpUXPaGd6OeBXwBZH32AmiFVixnlxeDi4F3TBtQ3AiWs2/hqM8Mp1mI",
+	"JeOrdptCSLaPlJPQysfBfgMNpYywt8FFa7SyMRFfBwP/KLQiUOEyN0aKIlzPHq33YtnbAasEVbj4P8KE",
+	"5ey/bM0CWaKALPV/vcoAR+TzmIASbIHCUIxPP3mp7290YpftVc03WPOthIrLlOkeeNlQSOuqiuM8ZqvH",
+	"pezxlC/fdtpuSGvsgRTqqvA3upwfLZZNVFU3cUfooG7V9PLILmwv3dWJSjfmZQ+XKTgvxBShPgkw4b/U",
+	"kdlClPXOtlyCx3DkFRCgZfn9gglv2vf3co7lkZ6bZe+/im/v8KgfDmz8w0BydZJqKU29iXaqPEtSWZGi",
+	"cRvg8NeUr+nkVIg4G9L6ICI5FTTPmL9cQF6Dv8bLPXXH5Au77PtAqL1edpp6x0tpiO3DZ95BdNZpUVtb",
+	"37+qvWEUjmP6EpCyhf8dlXWW9vXtyLqLAgla+zkwKj6QB/tJ9bMDnK91x34YHX/uBsI5o13q00/nBMsW",
+	"bPdsb51Reta72z6q++TYmAItceHPg2AstEPJcrYIhqDOs2wx05bqzH+/cxR8LGOxZonpSphwJ32dpS64",
+	"9Mf59eA6fN1HJU2pGZHxVh/qfwEAAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

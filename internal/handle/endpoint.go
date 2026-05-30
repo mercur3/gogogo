@@ -1,8 +1,10 @@
 package handle
 
 import (
+	"errors"
 	"fmt"
 	"goweb/internal/api"
+	"goweb/internal/common"
 	"goweb/internal/middleware"
 	"goweb/internal/otel"
 	"goweb/internal/service"
@@ -10,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -89,10 +92,34 @@ func MakeServerFromOpenAPI(a service.Author, b service.Book) *http.Server {
 		// middleware.TraceRequestMiddleware,
 		// middleware.MaxRequestBodyMiddleware,
 	}
-	i := api.NewStrictHandler(server, middlewares)
+	i := api.NewStrictHandlerWithOptions(server, middlewares, api.StrictHTTPServerOptions{
+		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			requestID := r.Context().Value(middleware.RequestID).(uuid.UUID)
+
+			if tErr, ok := errors.AsType[*common.TypedErr](err); ok {
+				errMsg := api.ErrorMsg{
+					Msg:       tErr.Msg,
+					RequestId: requestID,
+				}
+				switch tErr.Kind {
+				case common.ErrNotFound:
+					writeBody(w, http.StatusNotFound, errMsg)
+				case common.ErrAlreadyExists:
+					writeBody(w, http.StatusBadRequest, errMsg)
+				default:
+					writeBody(w, http.StatusInternalServerError, errMsg)
+				}
+			} else {
+				writeBody(w, http.StatusInternalServerError, api.ErrorMsg{
+					Msg: err.Error(),
+				})
+			}
+		},
+	})
 
 	r := http.NewServeMux()
 	h := api.HandlerFromMux(i, r)
+	// h := api.HandlerFromMuxWithBaseURL(i, r, "/api") // TODO add /api base point
 
 	swagger, err := api.GetSpec()
 	if err != nil {

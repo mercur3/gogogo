@@ -48,13 +48,10 @@ func (s Server) CreateAuthor(
 		Bio:  request.Body.Bio,
 	})
 	if err != nil {
-		return CreateAuthor400JSONResponse{
-			Msg:       err.Error(),
-			RequestId: uuid.New(),
-		}, nil
+		return nil, err
 	}
 
-	return CreateAuthor200JSONResponse(intoDto(author)), nil
+	return CreateAuthor201JSONResponse(intoDto(author)), nil
 }
 
 func (s Server) GetAuthor(
@@ -63,13 +60,21 @@ func (s Server) GetAuthor(
 ) (GetAuthorResponseObject, error) {
 	author, err := s.author.Get(ctx, request.Id)
 	if err != nil {
-		return GetAuthor404JSONResponse{
-			Msg:       err.Error(),
-			RequestId: uuid.New(),
-		}, nil
+		return nil, err
 	}
 
 	return GetAuthor200JSONResponse(intoDto(author)), nil
+}
+
+func (s Server) UpdateAuthor(
+	ctx context.Context,
+	request UpdateAuthorRequestObject,
+) (UpdateAuthorResponseObject, error) {
+	return nil, s.author.Update(ctx, db.UpdateAuthorParams{
+		ID:   request.Id,
+		Name: request.Body.Name,
+		Bio:  request.Body.Bio,
+	})
 }
 
 func (s Server) CreateBook(

@@ -14,12 +14,12 @@ INSERT INTO authors (
 )
 RETURNING *;
 
--- name: UpdateAuthor :exec
+-- name: UpdateAuthor :execrows
 UPDATE authors
   set name = sqlc.arg('name'),
   bio = sqlc.arg('bio')
 WHERE id = sqlc.arg('id');
 
--- name: DeleteAuthor :exec
+-- name: DeleteAuthor :execrows
 DELETE FROM authors
 WHERE id = sqlc.arg('id');

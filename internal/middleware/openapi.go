@@ -4,6 +4,7 @@ import (
 	"context"
 	"goweb/internal/api"
 	"goweb/internal/otel"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -18,17 +19,12 @@ func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.Str
 		tracer := otel.Tracer()
 		ctx, span := tracer.Start(ctx, "tracer-middleware")
 
-		wrapper := new(responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w})
-
-		requestID := r.Header.Get(RequestID)
-		if requestID == "" {
-			requestID = uuid.NewString()
-			r.Header.Set(RequestID, requestID)
-		}
+		ctx, requestID := setRequestId(ctx, r, w)
+		wrapper := &responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w}
 
 		defer func(t time.Time) {
 			delta := time.Since(t) / 1000
-			span.SetAttributes(attribute.Int("request.time", int(delta)))
+			span.SetAttributes(attribute.Int("request.time-ms", int(delta)))
 			span.SetAttributes(attribute.String("request.id", requestID))
 			span.SetAttributes(attribute.String("request.operation.id", operationID))
 			span.SetAttributes(attribute.Int("request.http.status", wrapper.statusCode))
@@ -50,4 +46,40 @@ func MaxRequestBodyMiddleware(f api.StrictHandlerFunc, operationID string) api.S
 
 		return f(ctx, w, r, request)
 	}
+}
+
+func OperationIdMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		ctx, span := otel.Tracer().Start(ctx, "operation-id")
+		defer span.End()
+		span.SetAttributes(attribute.String("request.operation.id", operationID))
+
+		return f(ctx, w, r, request)
+	}
+}
+
+func setRequestId(
+	ctx context.Context,
+	r *http.Request,
+	w http.ResponseWriter,
+) (context.Context, string) {
+	var requestID uuid.UUID
+	requestIDStr := r.Header.Get(RequestID)
+
+	if requestIDStr == "" {
+		requestID = uuid.New()
+		requestIDStr = requestID.String()
+		r.Header.Set(RequestID, requestIDStr)
+	} else {
+		parsed, err := uuid.Parse(requestIDStr)
+		if err != nil {
+			slog.Error("Not a UUID", slog.String(RequestID, requestIDStr))
+			parsed = uuid.New()
+		}
+
+		requestID = parsed
+	}
+
+	w.Header().Set(RequestID, requestIDStr)
+	return context.WithValue(ctx, RequestID, requestID), requestIDStr
 }
