@@ -12,7 +12,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-const RequestID string = "X-Request-ID"
+const requestIdHeader string = "X-Request-ID"
+
+type RequestID struct{}
 
 func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
@@ -64,22 +66,22 @@ func setRequestId(
 	w http.ResponseWriter,
 ) (context.Context, string) {
 	var requestID uuid.UUID
-	requestIDStr := r.Header.Get(RequestID)
+	requestIDStr := r.Header.Get(requestIdHeader)
 
 	if requestIDStr == "" {
 		requestID = uuid.New()
 		requestIDStr = requestID.String()
-		r.Header.Set(RequestID, requestIDStr)
+		r.Header.Set(requestIdHeader, requestIDStr)
 	} else {
 		parsed, err := uuid.Parse(requestIDStr)
 		if err != nil {
-			slog.Error("Not a UUID", slog.String(RequestID, requestIDStr))
+			slog.Error("Not a UUID", slog.String(requestIdHeader, requestIDStr))
 			parsed = uuid.New()
 		}
 
 		requestID = parsed
 	}
 
-	w.Header().Set(RequestID, requestIDStr)
-	return context.WithValue(ctx, RequestID, requestID), requestIDStr
+	w.Header().Set(requestIdHeader, requestIDStr)
+	return context.WithValue(ctx, RequestID{}, requestID), requestIDStr
 }

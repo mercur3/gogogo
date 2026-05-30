@@ -94,7 +94,7 @@ func MakeServerFromOpenAPI(a service.Author, b service.Book) *http.Server {
 	}
 	i := api.NewStrictHandlerWithOptions(server, middlewares, api.StrictHTTPServerOptions{
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			requestID := r.Context().Value(middleware.RequestID).(uuid.UUID)
+			requestID := r.Context().Value(middleware.RequestID{}).(uuid.UUID)
 
 			if tErr, ok := errors.AsType[*common.TypedErr](err); ok {
 				errMsg := api.ErrorMsg{
