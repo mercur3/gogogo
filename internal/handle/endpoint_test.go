@@ -105,7 +105,11 @@ func Test_max_request_body_size(t *testing.T) {
 	// setup
 	file, err := os.Open("./invalid.json")
 	assert.NoError(t, err)
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("failed to close file: %s", err.Error())
+		}
+	}()
 
 	server := MakeServerFromOpenAPI(
 		common.Config{MaxBodySize: 1000},
