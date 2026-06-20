@@ -26,6 +26,10 @@ import (
 
 func main() {
 	configureSlog()
+	cfg, err := common.ParseConfigs()
+	if err != nil {
+		panic(err)
+	}
 
 	// make signal channel
 	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -37,7 +41,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pool, err := db.InitPool(sigCtx, "exam-user", "exam-password", "exam-db", "5432")
+	pool, err := db.InitPool(sigCtx, cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +52,7 @@ func main() {
 	book := service.BookService(repositories)
 
 	// srv := handle.MakeServer(author)
-	srv := handle.MakeServerFromOpenAPI(common.Config{MaxBodySize: 1 << 20}, author, book)
+	srv := handle.MakeServerFromOpenAPI(cfg, author, book)
 	go func() {
 		slog.Info("Server starting")
 

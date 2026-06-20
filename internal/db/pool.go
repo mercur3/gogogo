@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"goweb/internal/common"
 	"log/slog"
 	"path"
 	"runtime"
@@ -13,15 +14,16 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func InitPool(
-	ctx context.Context,
-	username string,
-	password string,
-	dbName string,
-	port string,
-) (*pgxpool.Pool, error) {
+func InitPool(ctx context.Context, configs common.Config) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(
-		fmt.Sprintf("postgres://%s:%s@localhost:%s/%s", username, password, port, dbName),
+		fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s",
+			configs.DbUser,
+			configs.DbPassword,
+			configs.DbHost,
+			configs.DbPort,
+			configs.DbName,
+		),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)

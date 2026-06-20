@@ -22,9 +22,10 @@ clean:
 test:
 	go test -race -shuffle=on ./...
 
+
 .PHONY: run
 run: fmt
-	go run ./...
+	. ./.env && go run ./...
 
 .PHONY: fmt
 fmt:
