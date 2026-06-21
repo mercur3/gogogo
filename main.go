@@ -20,8 +20,6 @@ import (
 	"os/signal"
 	"sync"
 	"time"
-
-	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {
@@ -35,8 +33,8 @@ func main() {
 	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	otelClosers, err := otel.InitOtel(sigCtx)
-	defer closeOtel(sigCtx, otelClosers)
+	otelCloser, err := otel.InitOtel(sigCtx)
+	defer otelCloser.CloseResource(sigCtx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +45,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	repositories := new(repository.New(pool))
+	repositories := new(repository.New(pool.Pool))
 	author := service.AuthorService(repositories)
 	book := service.BookService(repositories)
 
@@ -77,50 +75,21 @@ func main() {
 	slog.Info("received shutdown signal")
 
 	// gracefull shutdown
-	var wg sync.WaitGroup
-
-	// close the server
-	wg.Go(func() {
-		if err := srv.Shutdown(ctx); err != nil {
-			slog.Error("error during the shutdown", slog.Any("error", err))
-
-			if err := srv.Close(); err != nil {
-				slog.Error("failed to close the server with force", slog.Any("error", err))
-			}
-		}
-	})
-
-	// close otel
-	wg.Go(func() {
-		closeOtel(ctx, otelClosers)
-	})
-
-	// close db
-	wg.Go(func() {
-		slog.Info("Closing the DB")
-		pool.Close()
-	})
-
-	wg.Wait()
-
-	slog.Info("everything was closed")
-}
-
-func closeOtel(ctx context.Context, c otel.Closers) {
-	slog.Info("closing tracer")
-	if err := c.TraceCloser(ctx); err != nil {
-		slog.Error("cannot close tracer", slog.Any("error", err))
-	}
-
-	slog.Info("closing meter")
-	if err := c.MetricCloser(ctx); err != nil {
-		if !errors.Is(err, metric.ErrReaderShutdown) {
-			slog.Error("cannot close meter", slog.Any("error", err))
-		}
-	}
+	closeResources(ctx, &otelCloser, srv, pool)
 }
 
 func configureSlog() {
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	slog.SetDefault(slog.New(handler))
+}
+
+func closeResources(ctx context.Context, resources ...common.ResourceCloser) {
+	var wg sync.WaitGroup
+
+	for _, r := range resources {
+		wg.Go(func() { r.CloseResource(ctx) })
+	}
+
+	wg.Wait()
+	slog.Info("everything was closed")
 }

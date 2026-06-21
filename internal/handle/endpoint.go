@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"goweb/internal/api"
@@ -8,6 +9,7 @@ import (
 	"goweb/internal/middleware"
 	"goweb/internal/otel"
 	"goweb/internal/service"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-func MakeServer(author service.Author) *http.Server {
+func MakeServer(author service.Author) *Server {
 	v1 := http.NewServeMux()
 	v1.HandleFunc("GET /test", getAllHandler)
 	v1.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
@@ -73,20 +75,20 @@ func MakeServer(author service.Author) *http.Server {
 		writeBody(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
-	return &http.Server{
+	return &Server{&http.Server{
 		Addr:         ":8080",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 		Handler:      middleware.TraceRequest(mux),
-	}
+	}}
 }
 
 func getAllHandler(w http.ResponseWriter, r *http.Request) {
 	writeBody(w, http.StatusOK, "GET /v1/test")
 }
 
-func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Book) *http.Server {
+func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Book) *Server {
 	server := api.NewServer(a, b)
 	middlewares := []api.StrictMiddlewareFunc{
 		// middleware.TraceRequestMiddleware,
@@ -132,11 +134,25 @@ func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Boo
 	h = middleware.TraceRequest(h)
 	h = http.MaxBytesHandler(h, config.MaxBodySize)
 
-	return &http.Server{
+	return &Server{&http.Server{
 		Addr:         ":8080",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 		Handler:      h,
+	}}
+}
+
+type Server struct {
+	*http.Server
+}
+
+func (s *Server) CloseResource(ctx context.Context) {
+	if err := s.Shutdown(ctx); err != nil {
+		slog.Error("error during the shutdown", slog.Any("error", err))
+
+		if err := s.Close(); err != nil {
+			slog.Error("failed to close the server with force", slog.Any("error", err))
+		}
 	}
 }

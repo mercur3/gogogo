@@ -21,12 +21,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type OtelCloser func(context.Context) error
-type Closers struct {
-	TraceCloser  OtelCloser
-	MetricCloser OtelCloser
-}
-
 var ServiceName = semconv.ServiceNameKey.String("my-awesome-service")
 
 func InitOtel(ctx context.Context) (Closers, error) {

@@ -14,7 +14,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func InitPool(ctx context.Context, configs common.Config) (*pgxpool.Pool, error) {
+func InitPool(ctx context.Context, configs common.Config) (*Pool, error) {
 	cfg, err := pgxpool.ParseConfig(
 		fmt.Sprintf(
 			"postgres://%s:%s@%s:%s/%s",
@@ -42,7 +42,7 @@ func InitPool(ctx context.Context, configs common.Config) (*pgxpool.Pool, error)
 	}
 
 	slog.Info("DB pool has been created")
-	return pool, RunMigrations(pool)
+	return &Pool{pool}, RunMigrations(pool)
 }
 
 func RunMigrations(pool *pgxpool.Pool) error {
@@ -66,4 +66,13 @@ func RunMigrations(pool *pgxpool.Pool) error {
 	}
 
 	return nil
+}
+
+type Pool struct {
+	*pgxpool.Pool
+}
+
+func (p *Pool) CloseResource(ctx context.Context) {
+	slog.Info("Closing the DB")
+	p.Close()
 }
