@@ -23,9 +23,9 @@ import (
 
 var ServiceName = semconv.ServiceNameKey.String("my-awesome-service")
 
-func InitOtel(ctx context.Context) (Closers, error) {
+func InitOtel(ctx context.Context, collectorAddr string) (Closers, error) {
 	closers := Closers{}
-	conn, err := initConn()
+	conn, err := initConn(collectorAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,16 +58,14 @@ func Meter() metric.Meter {
 	return otel.Meter("my-metrics")
 }
 
-func initConn() (*grpc.ClientConn, error) {
-	otelCollector := "localhost:4317"
-
-	slog.Debug("connecting to otel collector", slog.String("addr", otelCollector))
+func initConn(collectorAddr string) (*grpc.ClientConn, error) {
+	slog.Debug("connecting to otel collector", slog.String("addr", collectorAddr))
 	conn, err := grpc.NewClient(
-		otelCollector,
+		collectorAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to establish a connections to %s: %w", otelCollector, err)
+		return nil, fmt.Errorf("failed to establish a connections to %s: %w", collectorAddr, err)
 	}
 
 	return conn, err

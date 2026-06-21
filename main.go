@@ -33,7 +33,7 @@ func main() {
 	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	otelCloser, err := otel.InitOtel(sigCtx)
+	otelCloser, err := otel.InitOtel(sigCtx, "localhost:4317")
 	defer otelCloser.CloseResource(sigCtx)
 	if err != nil {
 		log.Fatal(err)
