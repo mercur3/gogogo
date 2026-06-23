@@ -20,7 +20,7 @@ jobs:
       image: golangci/golangci-lint:v2.11
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install make
         run: apt-get update && apt-get install -y --no-install-recommends make podman podman-compose
