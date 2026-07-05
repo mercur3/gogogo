@@ -91,6 +91,7 @@ func getAllHandler(w http.ResponseWriter, r *http.Request) {
 func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Book) *Server {
 	server := api.NewServer(a, b)
 	middlewares := []api.StrictMiddlewareFunc{
+		middleware.OpenApiOperationId,
 		// middleware.TraceRequestMiddleware,
 		// middleware.MaxRequestBodyMiddleware,
 	}

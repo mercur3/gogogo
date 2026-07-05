@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const requestIdHeader string = "X-Request-ID"
@@ -20,7 +21,11 @@ type RequestID struct{}
 func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
 		tracer := otel.Tracer()
-		ctx, span := tracer.Start(ctx, "tracer-middleware")
+		ctx, span := tracer.Start(
+			ctx,
+			"tracer-middleware",
+			trace.WithSpanKind(trace.SpanKindServer),
+		)
 
 		ctx, requestID := setRequestId(ctx, r, w)
 		wrapper := &responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w}
@@ -38,6 +43,20 @@ func TraceRequestMiddleware(f api.StrictHandlerFunc, operationID string) api.Str
 
 			span.End()
 		}(time.Now())
+
+		return f(ctx, w, r, request)
+	}
+}
+
+func OpenApiOperationId(f api.StrictHandlerFunc, operationID string) api.StrictHandlerFunc {
+	return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		ctx, span := otel.Tracer().Start(
+			ctx,
+			"operation-id-middleware",
+			trace.WithSpanKind(trace.SpanKindServer),
+		)
+		span.SetAttributes(attribute.String("request.operation.id", operationID))
+		defer span.End()
 
 		return f(ctx, w, r, request)
 	}

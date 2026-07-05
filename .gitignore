@@ -1,3 +1,7 @@
 *.sentinel
 .env
 .swap
+
+.vscode/
+.zed/
+

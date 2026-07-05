@@ -36,3 +36,12 @@ func Test_Error_prints_both_msg_and_parent_when_not_nil(t *testing.T) {
 
 	assert.Equal(t, "root error: file already closed", err.Error())
 }
+
+func Test_Is_does_not_panic_on_nil_receiver(t *testing.T) {
+	var err TypedErr
+
+	assert.NotPanics(t, func() {
+		err.Is(errors.New(""))
+	})
+	assert.False(t, err.Is(errors.New("")))
+}

@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/metric"
@@ -116,6 +117,7 @@ func initMeterProvider(
 }
 
 func SetError(s trace.Span, err error) {
-	s.SetAttributes(attribute.Bool("error", true))
+	s.RecordError(err)
+	s.SetStatus(codes.Error, "Failure")
 	s.SetAttributes(attribute.String("error.msg", err.Error()))
 }

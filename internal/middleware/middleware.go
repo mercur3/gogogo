@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type responseWriterWrapper struct {
@@ -21,7 +22,11 @@ func (r *responseWriterWrapper) WriteHeader(statusCode int) {
 func TraceRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tracer := otel.Tracer()
-		ctx, span := tracer.Start(r.Context(), "timed-middleware")
+		ctx, span := tracer.Start(
+			r.Context(),
+			"timed-middleware",
+			trace.WithSpanKind(trace.SpanKindServer),
+		)
 
 		ctx, requestID := setRequestId(ctx, r, w)
 		wrapper := &responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w}

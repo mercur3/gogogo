@@ -8,9 +8,9 @@ import (
 type ErrKind string
 
 const (
-	ErrNotFound      = "not_found"
-	ErrAlreadyExists = "already_exists"
-	ErrUnknown       = "uknown"
+	ErrNotFound      ErrKind = "not_found"
+	ErrAlreadyExists ErrKind = "already_exists"
+	ErrUnknown       ErrKind = "uknown"
 )
 
 // TypedErr represents an error with a concrete error "type" and an optional parent.
