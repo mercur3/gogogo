@@ -1,6 +1,6 @@
 module goweb
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/exaring/otelpgx v0.11.1
