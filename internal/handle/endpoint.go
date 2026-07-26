@@ -23,28 +23,29 @@ func MakeServer(author service.Author) *Server {
 	v1 := http.NewServeMux()
 	v1.HandleFunc("GET /test", getAllHandler)
 	v1.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
-		writeBody(w, http.StatusAccepted, "POST /v1/test")
+		writeBody(r.Context(), w, http.StatusAccepted, "POST /v1/test")
 	})
 	v1.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
 		val, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
-			writeBody(w, http.StatusOK, fmt.Sprintf("GET /v1/test/{%d}", val))
+			writeBody(r.Context(), w, http.StatusOK, fmt.Sprintf("GET /v1/test/{%d}", val))
 		}
 	})
 
 	v2 := http.NewServeMux()
 	v2.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
-		a, err := author.GetAll(r.Context())
+		ctx := r.Context()
+		a, err := author.GetAll(ctx)
 		if err != nil {
-			setError(w, err)
+			setError(ctx, w, err)
 		} else {
-			writeBody(w, http.StatusOK, a)
+			writeBody(ctx, w, http.StatusOK, a)
 		}
 	})
 	v2.HandleFunc("POST /test", func(w http.ResponseWriter, r *http.Request) {
-		writeBody(w, http.StatusAccepted, "POST /v2/test")
+		writeBody(r.Context(), w, http.StatusAccepted, "POST /v2/test")
 	})
 	v2.HandleFunc("GET /test/{id}", func(w http.ResponseWriter, r *http.Request) {
 		tracer := otel.Tracer()
@@ -55,9 +56,9 @@ func MakeServer(author service.Author) *Server {
 		if err == nil {
 			a, err := author.Get(ctx, int64(id))
 			if err != nil {
-				setError(w, err)
+				setError(ctx, w, err)
 			} else {
-				writeBody(w, http.StatusOK, a)
+				writeBody(ctx, w, http.StatusOK, a)
 			}
 		} else {
 			span.SetAttributes(attribute.String("error", err.Error()))
@@ -69,10 +70,10 @@ func MakeServer(author service.Author) *Server {
 	mux.Handle("/v1/", middleware.DeprecatedEndpoint(http.StripPrefix("/v1", v1)))
 	mux.Handle("/v2/", http.StripPrefix("/v2", v2))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeBody(w, http.StatusOK, map[string]string{"status": "alive"})
+		writeBody(r.Context(), w, http.StatusOK, map[string]string{"status": "alive"})
 	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		writeBody(w, http.StatusOK, map[string]string{"status": "ready"})
+		writeBody(r.Context(), w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
 	return &Server{&http.Server{
@@ -85,7 +86,7 @@ func MakeServer(author service.Author) *Server {
 }
 
 func getAllHandler(w http.ResponseWriter, r *http.Request) {
-	writeBody(w, http.StatusOK, "GET /v1/test")
+	writeBody(r.Context(), w, http.StatusOK, "GET /v1/test")
 }
 
 func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Book) *Server {
@@ -97,7 +98,8 @@ func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Boo
 	}
 	i := api.NewStrictHandlerWithOptions(server, middlewares, api.StrictHTTPServerOptions{
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			requestID := r.Context().Value(middleware.RequestID{}).(uuid.UUID)
+			ctx := r.Context()
+			requestID := ctx.Value(middleware.RequestID{}).(uuid.UUID)
 
 			if tErr, ok := errors.AsType[*common.TypedErr](err); ok {
 				errMsg := api.ErrorMsg{
@@ -106,14 +108,14 @@ func MakeServerFromOpenAPI(config common.Config, a service.Author, b service.Boo
 				}
 				switch tErr.Kind {
 				case common.ErrNotFound:
-					writeBody(w, http.StatusNotFound, errMsg)
+					writeBody(ctx, w, http.StatusNotFound, errMsg)
 				case common.ErrAlreadyExists:
-					writeBody(w, http.StatusBadRequest, errMsg)
+					writeBody(ctx, w, http.StatusBadRequest, errMsg)
 				default:
-					writeBody(w, http.StatusInternalServerError, errMsg)
+					writeBody(ctx, w, http.StatusInternalServerError, errMsg)
 				}
 			} else {
-				writeBody(w, http.StatusInternalServerError, api.ErrorMsg{
+				writeBody(ctx, w, http.StatusInternalServerError, api.ErrorMsg{
 					Msg: err.Error(),
 				})
 			}

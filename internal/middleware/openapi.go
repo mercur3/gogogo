@@ -100,7 +100,7 @@ func setRequestId(
 	} else {
 		parsed, err := uuid.Parse(requestIDStr)
 		if err != nil {
-			slog.Error("Not a UUID", slog.String(requestIdHeader, requestIDStr))
+			slog.ErrorContext(ctx, "Not a UUID", slog.String(requestIdHeader, requestIDStr))
 			parsed = uuid.New()
 		}
 

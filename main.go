@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	configureSlog()
+	slog.SetDefault(slog.New(newStdoutJSONHandler()))
 	cfg, err := common.ParseConfigs()
 	if err != nil {
 		panic(err)
@@ -38,6 +38,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Now that the logger provider is registered, upgrade the default slog
+	// logger to also ship records to the collector (and on to Loki),
+	// alongside the existing stdout JSON output.
+	slog.SetDefault(
+		slog.New(otel.WrapSlogHandler(newStdoutJSONHandler(), otel.ServiceName)),
+	)
 
 	pool, err := db.InitPool(sigCtx, cfg)
 	if err != nil {
@@ -78,9 +84,8 @@ func main() {
 	closeResources(ctx, &otelCloser, srv, pool)
 }
 
-func configureSlog() {
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
-	slog.SetDefault(slog.New(handler))
+func newStdoutJSONHandler() slog.Handler {
+	return slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 }
 
 func closeResources(ctx context.Context, resources ...common.ResourceCloser) {

@@ -17,10 +17,35 @@ services:
     ports:
       - 9090:9090
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.60
+  tempo:
+    image: grafana/tempo:2.9.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
     ports:
-      - 16686:16686
+      - 3200:3200
+
+  loki:
+    image: grafana/loki:3.7.4
+    command: ["-config.file=/etc/loki-config.yaml"]
+    volumes:
+      - ./loki-config.yaml:/etc/loki-config.yaml
+    ports:
+      - 3100:3100
+
+  grafana:
+    image: grafana/grafana:13.1.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
 
   postgres:
     image: docker.io/postgres:18-alpine
