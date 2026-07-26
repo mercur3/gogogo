@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"goweb/internal/db"
-	"goweb/internal/repository"
+	"gogogo/internal/db"
+	"gogogo/internal/repository"
 )
 
 type Book struct {

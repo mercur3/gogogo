@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"goweb/internal/db"
-	"goweb/internal/otel"
-	"goweb/internal/repository"
+	"gogogo/internal/db"
+	"gogogo/internal/otel"
+	"gogogo/internal/repository"
 )
 
 const authorService = "author-service"

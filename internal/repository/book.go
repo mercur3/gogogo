@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"goweb/internal/db"
+	"gogogo/internal/db"
 )
 
 type BookRepo struct {

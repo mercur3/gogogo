@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"goweb/internal/otel"
+	"gogogo/internal/otel"
 	"net/http"
 	"time"
 

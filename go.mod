@@ -1,4 +1,4 @@
-module goweb
+module gogogo
 
 go 1.26.5
 

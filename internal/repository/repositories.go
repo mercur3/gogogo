@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"goweb/internal/db"
+	"gogogo/internal/db"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"

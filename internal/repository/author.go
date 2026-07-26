@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
-	"goweb/internal/common"
-	"goweb/internal/db"
+	"gogogo/internal/common"
+	"gogogo/internal/db"
 
 	"github.com/jackc/pgx/v5"
 )

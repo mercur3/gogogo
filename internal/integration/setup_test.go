@@ -2,7 +2,7 @@ package integration
 
 import (
 	"context"
-	"goweb/internal/db"
+	"gogogo/internal/db"
 	"os"
 	"testing"
 	"time"

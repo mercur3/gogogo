@@ -3,8 +3,8 @@ package integration
 import (
 	"context"
 	"errors"
-	"goweb/internal/db"
-	"goweb/internal/repository"
+	"gogogo/internal/db"
+	"gogogo/internal/repository"
 	"testing"
 	"time"
 

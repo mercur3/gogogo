@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"errors"
-	"goweb/internal/db"
-	"goweb/internal/service"
+	"gogogo/internal/db"
+	"gogogo/internal/service"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

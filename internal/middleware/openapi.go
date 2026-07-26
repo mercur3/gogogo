@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"context"
-	"goweb/internal/api"
-	"goweb/internal/common"
-	"goweb/internal/otel"
+	"gogogo/internal/api"
+	"gogogo/internal/common"
+	"gogogo/internal/otel"
 	"log/slog"
 	"net/http"
 	"time"

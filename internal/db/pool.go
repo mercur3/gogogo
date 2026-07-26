@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
-	"goweb/internal/common"
+	"gogogo/internal/common"
 	"log/slog"
 	"path"
 	"runtime"
