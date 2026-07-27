@@ -34,3 +34,21 @@ updates:
           - major
     assignees:
       - "mercur3"
+
+  # docker-compose
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
+      actions-major:
+        update-types:
+          - major
+    assignees:
+      - "mercur3"
+
