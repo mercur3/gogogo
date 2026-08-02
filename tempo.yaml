@@ -1,0 +1,47 @@
+# Minimal single-binary Tempo config for local development.
+# Tempo 3.0 introduced a new architecture with breaking config changes;
+# this targets the 2.9.x config format used in docker-compose.yaml.
+
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+    wal:
+      path: /tmp/tempo/wal
+
+# Powers TraceQL metrics queries ({ } | rate(), | quantile_over_time(), etc.),
+# which is what Traces Drilldown's Breakdown/RED-metrics view runs under the
+# hood. Without this, those panels error with "localblocks processor not
+# found" and show as "No data". Plain trace search (the Traces tab) doesn't
+# need this at all.
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /tmp/tempo/generator/wal
+  traces_storage:
+    path: /tmp/tempo/generator/traces
+  processor:
+    local_blocks:
+      filter_server_spans: false
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [local-blocks]
+
+compactor:
+  compaction:
+    block_retention: 48h

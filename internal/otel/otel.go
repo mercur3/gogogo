@@ -9,10 +9,13 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -22,7 +25,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var ServiceName = semconv.ServiceNameKey.String("my-awesome-service")
+const ServiceName = "my-awesome-service"
 
 func InitOtel(ctx context.Context, collectorAddr string) (Closers, error) {
 	closers := Closers{}
@@ -31,7 +34,10 @@ func InitOtel(ctx context.Context, collectorAddr string) (Closers, error) {
 		log.Fatal(err)
 	}
 
-	res, err := resource.New(ctx, resource.WithAttributes(ServiceName))
+	res, err := resource.New(
+		ctx,
+		resource.WithAttributes(semconv.ServiceNameKey.String(ServiceName)),
+	)
 	if err != nil {
 		return closers, err
 	}
@@ -47,6 +53,12 @@ func InitOtel(ctx context.Context, collectorAddr string) (Closers, error) {
 		return closers, err
 	}
 	closers.MetricCloser = metricShutdownHook
+
+	logShutdownHook, err := initLoggerProvider(ctx, res, conn)
+	if err != nil {
+		return closers, err
+	}
+	closers.LogCloser = logShutdownHook
 
 	return closers, nil
 }
@@ -114,6 +126,27 @@ func initMeterProvider(
 	)
 
 	return meterProvider.Shutdown, nil
+}
+
+func initLoggerProvider(
+	ctx context.Context,
+	res *resource.Resource,
+	conn *grpc.ClientConn,
+) (OtelCloser, error) {
+	slog.Debug("setting up log exporter")
+
+	logExporter, err := otlploggrpc.New(ctx, otlploggrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log exporter: %w", err)
+	}
+
+	loggerProvider := sdklog.NewLoggerProvider(
+		sdklog.WithResource(res),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+	)
+	global.SetLoggerProvider(loggerProvider)
+
+	return loggerProvider.Shutdown, nil
 }
 
 func SetError(s trace.Span, err error) {

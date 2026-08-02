@@ -32,7 +32,7 @@ func WithTx[T any](
 ) (*T, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		slog.Error("failed to create a transaction", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to create a transaction", slog.Any("error", err))
 		return nil, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a harmless no-op
