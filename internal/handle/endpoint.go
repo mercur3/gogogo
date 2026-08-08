@@ -36,6 +36,8 @@ func MakeServer(author service.Author) *Server {
 
 	v2 := http.NewServeMux()
 	v2.HandleFunc("GET /test", func(w http.ResponseWriter, r *http.Request) {
+		// resclient.Get(r.Context())
+		// restclient.GetOpenAPI(r.Context())
 		ctx := r.Context()
 		a, err := author.GetAll(ctx)
 		if err != nil {

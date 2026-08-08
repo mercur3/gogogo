@@ -32,8 +32,7 @@ func TraceRequest(h http.Handler) http.Handler {
 		wrapper := &responseWriterWrapper{statusCode: http.StatusOK, ResponseWriter: w}
 
 		defer func(t time.Time) {
-			delta := time.Since(t) / 1000
-			span.SetAttributes(attribute.Int("request.time-ms", int(delta)))
+			span.SetAttributes(attribute.Int("request.time-ms", int(time.Since(t).Milliseconds())))
 			span.SetAttributes(attribute.String("request.id", requestID))
 			span.SetAttributes(attribute.Int("request.http.status", wrapper.statusCode))
 

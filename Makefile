@@ -3,7 +3,7 @@ SQLC_GENERATED_FILES := $(wildcard internal/db/*.sql.go) internal/db/db.go inter
 SQLC_CONFIG          := assets/sqlc.yaml
 
 OPENAPI_FILES           := $(wildcard assets/api/*.yaml)
-OPENAPI_GENERATED_FILES := $(wildcard internal/api/*.gen.go)
+OPENAPI_GENERATED_FILES := $(wildcard internal/api/*.gen.go) $(wildcard internal/restclient/*.gen.go)
 
 CODEGEN_SENTINEL := .codegen.sentinel
 

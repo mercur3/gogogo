@@ -1,6 +1,8 @@
 package main
 
 //go:generate go tool oapi-codegen -config ./assets/api/cfg.yaml ./assets/api/api.yaml
+//go:generate go tool oapi-codegen -config ./assets/api/client-cfg.yaml ./assets/api/client-api.yaml
+
 //go:generate go tool sqlc generate -f ./assets/sqlc.yaml
 
 import (
@@ -53,10 +55,10 @@ func main() {
 
 	repositories := new(repository.New(pool.Pool))
 	author := service.AuthorService(repositories)
-	book := service.BookService(repositories)
+	// book := service.BookService(repositories)
 
-	// srv := handle.MakeServer(author)
-	srv := handle.MakeServerFromOpenAPI(cfg, author, book)
+	srv := handle.MakeServer(author)
+	// srv := handle.MakeServerFromOpenAPI(cfg, author, book)
 	go func() {
 		slog.Info("Server starting")
 
