@@ -17,7 +17,7 @@ jobs:
     name: Run Test
     runs-on: ubuntu-latest
     container:
-      image: golangci/golangci-lint:v2.11
+      image: golangci/golangci-lint:v2.13.1
 
     steps:
       - uses: actions/checkout@v7
