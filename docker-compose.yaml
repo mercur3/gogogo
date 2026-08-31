@@ -26,7 +26,7 @@ services:
       - 3200:3200
 
   loki:
-    image: grafana/loki:3.7.6
+    image: grafana/loki:3.7.7
     command: ["-config.file=/etc/loki-config.yaml"]
     volumes:
       - ./loki-config.yaml:/etc/loki-config.yaml
