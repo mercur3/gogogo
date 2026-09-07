@@ -3,7 +3,7 @@
 
 services:
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.159.0
+    image: otel/opentelemetry-collector-contrib:0.160.0
     command: ["--config=/etc/otel-collector.yaml"]
     volumes:
       - ./otel-collector.yaml:/etc/otel-collector.yaml
@@ -34,7 +34,7 @@ services:
       - 3100:3100
 
   grafana:
-    image: grafana/grafana:13.2.0
+    image: grafana/grafana:13.2.1
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
