@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel"
 )
 
 // WrapSlogHandler returns a slog.Handler that writes to base (e.g. your
@@ -20,7 +20,7 @@ import (
 func WrapSlogHandler(base slog.Handler, serviceName string) slog.Handler {
 	otelHandler := otelslog.NewHandler(
 		serviceName,
-		otelslog.WithLoggerProvider(global.GetLoggerProvider()),
+		otelslog.WithLoggerProvider(otel.GetLoggerProvider()),
 	)
 	return &multiHandler{handlers: []slog.Handler{base, otelHandler}}
 }
