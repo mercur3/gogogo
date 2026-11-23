@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"path"
 	"runtime"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,6 +37,9 @@ func InitPool(ctx context.Context, configs common.Config) (*Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the db: %w", err)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping the db: %w", err)

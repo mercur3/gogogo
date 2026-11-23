@@ -16,6 +16,7 @@ type responseWriterWrapper struct {
 
 func (r *responseWriterWrapper) WriteHeader(statusCode int) {
 	r.statusCode = statusCode
+	r.ResponseWriter.Header().Set("Date", time.Now().Format(time.RFC3339))
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
@@ -39,8 +40,6 @@ func TraceRequest(h http.Handler) http.Handler {
 			span.SetAttributes(attribute.String("url.path", r.URL.Path))
 			span.SetAttributes(attribute.String("url.method", r.Method))
 			span.SetAttributes(attribute.String("url.host", r.Host))
-
-			span.End()
 
 			span.End()
 		}(time.Now())

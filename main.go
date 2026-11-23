@@ -55,10 +55,10 @@ func main() {
 
 	repositories := new(repository.New(pool.Pool))
 	author := service.AuthorService(repositories)
-	// book := service.BookService(repositories)
+	book := service.BookService(repositories)
 
-	srv := handle.MakeServer(author)
-	// srv := handle.MakeServerFromOpenAPI(cfg, author, book)
+	// srv := handle.MakeServer(author)
+	srv := handle.MakeServerFromOpenAPI(cfg, author, book)
 	go func() {
 		slog.Info("Server starting")
 

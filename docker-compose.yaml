@@ -53,5 +53,11 @@ services:
       POSTGRES_PASSWORD: exam-password
       POSTGRES_USER: exam-user
       POSTGRES_DB: exam-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "exam-db", "-U", "exam-user"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     ports:
       - "5432:5432"

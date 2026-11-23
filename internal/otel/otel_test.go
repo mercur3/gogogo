@@ -14,7 +14,7 @@ func Test_connection_works(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	container, err := grafanalgtm.Run(ctx, "grafana/otel-lgtm:0.6.0")
+	container, err := grafanalgtm.Run(ctx, "grafana/otel-lgtm:0.41.1")
 	defer func() {
 		assert.NoError(t, testcontainers.TerminateContainer(container))
 	}()
