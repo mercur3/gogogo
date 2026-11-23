@@ -48,7 +48,7 @@ services:
       - loki
 
   postgres:
-    image: docker.io/postgres:18-alpine
+    image: docker.io/postgres:19-alpine
     environment:
       POSTGRES_PASSWORD: exam-password
       POSTGRES_USER: exam-user
